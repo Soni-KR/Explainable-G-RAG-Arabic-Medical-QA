@@ -1,0 +1,776 @@
+[
+  {
+    "query_id": "trial_query_001",
+    "query": "ما علاج حساسية الصدر مع السعال والبلغم؟",
+    "normalized_query": "ما علاج حساسيه الصدر مع السعال والبلغم?",
+    "expanded_terms": [
+      "حساسية",
+      "ربو"
+    ],
+    "expanded_normalized_query": "ما علاج حساسيه الصدر مع السعال والبلغم? البلغم حساسيه ربو",
+    "intents": [
+      {
+        "intent": "treatment_request",
+        "answer_focus": "treatments and medical recommendations",
+        "target_relation_types": [
+          "TREATED_BY",
+          "TREATS"
+        ],
+        "matched_keywords": [
+          "علاج"
+        ],
+        "first_keyword_position": 3,
+        "intent_role": "primary",
+        "intent_weight": 1.0
+      },
+      {
+        "intent": "symptom_check",
+        "answer_focus": "symptoms and possible associated conditions",
+        "target_relation_types": [
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "matched_keywords": [
+          "سعال",
+          "بلغم"
+        ],
+        "first_keyword_position": 24,
+        "intent_role": "secondary",
+        "intent_weight": 0.4
+      }
+    ],
+    "detected_entities": [
+      {
+        "surface": "حساسية الصدر",
+        "surface_norm": "حساسيه الصدر",
+        "match_type": "exact",
+        "entity_id": "ent_diseasecondition_250910ab0701",
+        "canonical_name": "حساسية الصدر",
+        "canonical_name_norm": "حساسيه الصدر",
+        "entity_type": "DiseaseCondition",
+        "entity_quality": "high",
+        "mention_count": 4
+      },
+      {
+        "surface": "سعال",
+        "surface_norm": "سعال",
+        "match_type": "exact",
+        "entity_id": "ent_symptom_f4cf885a0447",
+        "canonical_name": "سعال",
+        "canonical_name_norm": "سعال",
+        "entity_type": "Symptom",
+        "entity_quality": "high",
+        "mention_count": 7
+      },
+      {
+        "surface": "بلغم",
+        "surface_norm": "بلغم",
+        "match_type": "exact",
+        "entity_id": "ent_symptom_dc2c7333a505",
+        "canonical_name": "بلغم",
+        "canonical_name_norm": "بلغم",
+        "entity_type": "Symptom",
+        "entity_quality": "high",
+        "mention_count": 2
+      },
+      {
+        "surface": "حساسية الصدر",
+        "surface_norm": "حساسيه الصدر",
+        "match_type": "alias",
+        "entity_id": "ent_diseasecondition_2f75d3dabe0b",
+        "canonical_name": "حساسية",
+        "canonical_name_norm": "حساسيه",
+        "entity_type": "DiseaseCondition",
+        "entity_quality": "high",
+        "mention_count": 36
+      }
+    ],
+    "semantic_candidate_entities": [
+      {
+        "surface": "ربو",
+        "surface_norm": "ربو",
+        "match_type": "expansion",
+        "entity_id": "ent_diseasecondition_1c50bd11c45a",
+        "canonical_name": "ربو",
+        "canonical_name_norm": "ربو",
+        "entity_type": "DiseaseCondition",
+        "entity_quality": "high",
+        "mention_count": 5
+      }
+    ],
+    "warnings": [],
+    "retrieval_plan": {
+      "retrieval_mode": "entity_seeded_vector_then_graph",
+      "semantic_search_targets": [
+        "entity",
+        "evidence",
+        "qa"
+      ],
+      "graph_expansion": {
+        "start_from_detected_entities": true,
+        "seed_entity_types": [
+          "DiseaseCondition",
+          "Symptom"
+        ],
+        "target_relation_types": [
+          "TREATED_BY",
+          "TREATS",
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "relation_type_weights": {
+          "TREATED_BY": 1.0,
+          "TREATS": 1.0,
+          "HAS_SYMPTOM": 0.4,
+          "SYMPTOM_OF": 0.4
+        },
+        "default_relation_weight": -0.2,
+        "max_hops": 1
+      },
+      "reranking_signals": [
+        "embedding_similarity",
+        "entity_exact_match",
+        "relation_type_match",
+        "evidence_confidence"
+      ]
+    }
+  },
+  {
+    "query_id": "trial_query_002",
+    "query": "عندي كحة وبلغم هل هذا ربو؟",
+    "normalized_query": "عندي كحه وبلغم هل هذا ربو?",
+    "expanded_terms": [
+      "سعال"
+    ],
+    "expanded_normalized_query": "عندي كحه وبلغم هل هذا ربو? بلغم سعال",
+    "intents": [
+      {
+        "intent": "symptom_check",
+        "answer_focus": "symptoms and possible associated conditions",
+        "target_relation_types": [
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "matched_keywords": [
+          "عندي",
+          "كحه",
+          "سعال",
+          "بلغم"
+        ],
+        "first_keyword_position": 0,
+        "intent_role": "primary",
+        "intent_weight": 1.0
+      },
+      {
+        "intent": "cause_or_condition_question",
+        "answer_focus": "possible conditions and relation evidence",
+        "target_relation_types": [
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "matched_keywords": [
+          "هل هذا"
+        ],
+        "first_keyword_position": 15,
+        "intent_role": "secondary",
+        "intent_weight": 0.4
+      }
+    ],
+    "detected_entities": [
+      {
+        "surface": "ربو",
+        "surface_norm": "ربو",
+        "match_type": "exact",
+        "entity_id": "ent_diseasecondition_1c50bd11c45a",
+        "canonical_name": "ربو",
+        "canonical_name_norm": "ربو",
+        "entity_type": "DiseaseCondition",
+        "entity_quality": "high",
+        "mention_count": 5
+      },
+      {
+        "surface": "بلغم",
+        "surface_norm": "بلغم",
+        "match_type": "exact",
+        "entity_id": "ent_symptom_dc2c7333a505",
+        "canonical_name": "بلغم",
+        "canonical_name_norm": "بلغم",
+        "entity_type": "Symptom",
+        "entity_quality": "high",
+        "mention_count": 2
+      }
+    ],
+    "semantic_candidate_entities": [
+      {
+        "surface": "سعال",
+        "surface_norm": "سعال",
+        "match_type": "expansion",
+        "entity_id": "ent_symptom_f4cf885a0447",
+        "canonical_name": "سعال",
+        "canonical_name_norm": "سعال",
+        "entity_type": "Symptom",
+        "entity_quality": "high",
+        "mention_count": 7
+      }
+    ],
+    "warnings": [
+      "Current trial graph has no direct CAUSES/CAUSED_BY/RISK_FACTOR_FOR relation. Step 9 should approximate cause questions with SYMPTOM_OF/HAS_SYMPTOM and mark this limitation."
+    ],
+    "retrieval_plan": {
+      "retrieval_mode": "entity_seeded_vector_then_graph",
+      "semantic_search_targets": [
+        "entity",
+        "evidence",
+        "qa"
+      ],
+      "graph_expansion": {
+        "start_from_detected_entities": true,
+        "seed_entity_types": [
+          "DiseaseCondition",
+          "Symptom"
+        ],
+        "target_relation_types": [
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "relation_type_weights": {
+          "HAS_SYMPTOM": 1.0,
+          "SYMPTOM_OF": 1.0
+        },
+        "default_relation_weight": -0.2,
+        "max_hops": 1
+      },
+      "reranking_signals": [
+        "embedding_similarity",
+        "entity_exact_match",
+        "relation_type_match",
+        "evidence_confidence"
+      ]
+    }
+  },
+  {
+    "query_id": "trial_query_003",
+    "query": "ما التحاليل المناسبة لفقر الدم؟",
+    "normalized_query": "ما التحاليل المناسبه لفقر الدم?",
+    "expanded_terms": [],
+    "expanded_normalized_query": "ما التحاليل المناسبه لفقر الدم? فقر",
+    "intents": [
+      {
+        "intent": "diagnostic_test_request",
+        "answer_focus": "diagnostic tests and investigations",
+        "target_relation_types": [
+          "DIAGNOSED_BY",
+          "DIAGNOSES",
+          "INVESTIGATED_BY",
+          "INVESTIGATES"
+        ],
+        "matched_keywords": [
+          "تحاليل"
+        ],
+        "first_keyword_position": 3,
+        "intent_role": "primary",
+        "intent_weight": 1.0
+      }
+    ],
+    "detected_entities": [
+      {
+        "surface": "فقر الدم",
+        "surface_norm": "فقر الدم",
+        "match_type": "exact",
+        "entity_id": "ent_diseasecondition_9719230327a2",
+        "canonical_name": "فقر الدم",
+        "canonical_name_norm": "فقر الدم",
+        "entity_type": "DiseaseCondition",
+        "entity_quality": "high",
+        "mention_count": 42
+      }
+    ],
+    "semantic_candidate_entities": [],
+    "warnings": [],
+    "retrieval_plan": {
+      "retrieval_mode": "entity_seeded_vector_then_graph",
+      "semantic_search_targets": [
+        "entity",
+        "evidence",
+        "qa"
+      ],
+      "graph_expansion": {
+        "start_from_detected_entities": true,
+        "seed_entity_types": [
+          "DiseaseCondition"
+        ],
+        "target_relation_types": [
+          "DIAGNOSED_BY",
+          "DIAGNOSES",
+          "INVESTIGATED_BY",
+          "INVESTIGATES"
+        ],
+        "relation_type_weights": {
+          "DIAGNOSED_BY": 1.0,
+          "DIAGNOSES": 1.0,
+          "INVESTIGATED_BY": 1.0,
+          "INVESTIGATES": 1.0
+        },
+        "default_relation_weight": -0.2,
+        "max_hops": 1
+      },
+      "reranking_signals": [
+        "embedding_similarity",
+        "entity_exact_match",
+        "relation_type_match",
+        "evidence_confidence"
+      ]
+    }
+  },
+  {
+    "query_id": "trial_query_004",
+    "query": "ما أسباب صداع مع دوخة؟",
+    "normalized_query": "ما اسباب صداع مع دوخه?",
+    "expanded_terms": [],
+    "expanded_normalized_query": "ما اسباب صداع مع دوخه?",
+    "intents": [
+      {
+        "intent": "cause_or_condition_question",
+        "answer_focus": "possible conditions and relation evidence",
+        "target_relation_types": [
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "matched_keywords": [
+          "اسباب"
+        ],
+        "first_keyword_position": 3,
+        "intent_role": "primary",
+        "intent_weight": 1.0
+      },
+      {
+        "intent": "symptom_check",
+        "answer_focus": "symptoms and possible associated conditions",
+        "target_relation_types": [
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "matched_keywords": [
+          "دوخه",
+          "صداع"
+        ],
+        "first_keyword_position": 9,
+        "intent_role": "secondary",
+        "intent_weight": 0.4
+      }
+    ],
+    "detected_entities": [
+      {
+        "surface": "صداع",
+        "surface_norm": "صداع",
+        "match_type": "exact",
+        "entity_id": "ent_symptom_b754f1a1e5a8",
+        "canonical_name": "صداع",
+        "canonical_name_norm": "صداع",
+        "entity_type": "Symptom",
+        "entity_quality": "high",
+        "mention_count": 14
+      },
+      {
+        "surface": "دوخة",
+        "surface_norm": "دوخه",
+        "match_type": "exact",
+        "entity_id": "ent_symptom_850b2a35c32d",
+        "canonical_name": "دوخة",
+        "canonical_name_norm": "دوخه",
+        "entity_type": "Symptom",
+        "entity_quality": "high",
+        "mention_count": 1
+      },
+      {
+        "surface": "صداع",
+        "surface_norm": "صداع",
+        "match_type": "alias",
+        "entity_id": "ent_symptom_c01e00eb5c72",
+        "canonical_name": "صداع التوتر",
+        "canonical_name_norm": "صداع التوتر",
+        "entity_type": "Symptom",
+        "entity_quality": "high",
+        "mention_count": 1
+      }
+    ],
+    "semantic_candidate_entities": [],
+    "warnings": [
+      "Current trial graph has no direct CAUSES/CAUSED_BY/RISK_FACTOR_FOR relation. Step 9 should approximate cause questions with SYMPTOM_OF/HAS_SYMPTOM and mark this limitation."
+    ],
+    "retrieval_plan": {
+      "retrieval_mode": "entity_seeded_vector_then_graph",
+      "semantic_search_targets": [
+        "entity",
+        "evidence",
+        "qa"
+      ],
+      "graph_expansion": {
+        "start_from_detected_entities": true,
+        "seed_entity_types": [
+          "Symptom"
+        ],
+        "target_relation_types": [
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "relation_type_weights": {
+          "HAS_SYMPTOM": 1.0,
+          "SYMPTOM_OF": 1.0
+        },
+        "default_relation_weight": -0.2,
+        "max_hops": 1
+      },
+      "reranking_signals": [
+        "embedding_similarity",
+        "entity_exact_match",
+        "relation_type_match",
+        "evidence_confidence"
+      ]
+    }
+  },
+  {
+    "query_id": "trial_query_005",
+    "query": "ما علاج الجلطة الدماغية؟",
+    "normalized_query": "ما علاج الجلطه الدماغيه?",
+    "expanded_terms": [],
+    "expanded_normalized_query": "ما علاج الجلطه الدماغيه?",
+    "intents": [
+      {
+        "intent": "treatment_request",
+        "answer_focus": "treatments and medical recommendations",
+        "target_relation_types": [
+          "TREATED_BY",
+          "TREATS"
+        ],
+        "matched_keywords": [
+          "علاج"
+        ],
+        "first_keyword_position": 3,
+        "intent_role": "primary",
+        "intent_weight": 1.0
+      }
+    ],
+    "detected_entities": [
+      {
+        "surface": "الجلطة الدماغية",
+        "surface_norm": "الجلطه الدماغيه",
+        "match_type": "exact",
+        "entity_id": "ent_diseasecondition_da5565d6842c",
+        "canonical_name": "الجلطة الدماغية",
+        "canonical_name_norm": "الجلطه الدماغيه",
+        "entity_type": "DiseaseCondition",
+        "entity_quality": "high",
+        "mention_count": 2
+      }
+    ],
+    "semantic_candidate_entities": [],
+    "warnings": [],
+    "retrieval_plan": {
+      "retrieval_mode": "entity_seeded_vector_then_graph",
+      "semantic_search_targets": [
+        "entity",
+        "evidence",
+        "qa"
+      ],
+      "graph_expansion": {
+        "start_from_detected_entities": true,
+        "seed_entity_types": [
+          "DiseaseCondition"
+        ],
+        "target_relation_types": [
+          "TREATED_BY",
+          "TREATS"
+        ],
+        "relation_type_weights": {
+          "TREATED_BY": 1.0,
+          "TREATS": 1.0
+        },
+        "default_relation_weight": -0.2,
+        "max_hops": 1
+      },
+      "reranking_signals": [
+        "embedding_similarity",
+        "entity_exact_match",
+        "relation_type_match",
+        "evidence_confidence"
+      ]
+    }
+  },
+  {
+    "query_id": "trial_query_006",
+    "query": "هل ضيق التنفس من أعراض الحساسية؟",
+    "normalized_query": "هل ضيق التنفس من اعراض الحساسيه?",
+    "expanded_terms": [],
+    "expanded_normalized_query": "هل ضيق التنفس من اعراض الحساسيه?",
+    "intents": [
+      {
+        "intent": "symptom_check",
+        "answer_focus": "symptoms and possible associated conditions",
+        "target_relation_types": [
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "matched_keywords": [
+          "اعراض",
+          "ضيق"
+        ],
+        "first_keyword_position": 3,
+        "intent_role": "primary",
+        "intent_weight": 1.0
+      }
+    ],
+    "detected_entities": [
+      {
+        "surface": "حساسية",
+        "surface_norm": "حساسيه",
+        "match_type": "exact",
+        "entity_id": "ent_diseasecondition_2f75d3dabe0b",
+        "canonical_name": "حساسية",
+        "canonical_name_norm": "حساسيه",
+        "entity_type": "DiseaseCondition",
+        "entity_quality": "high",
+        "mention_count": 36
+      },
+      {
+        "surface": "ضيق التنفس",
+        "surface_norm": "ضيق التنفس",
+        "match_type": "alias",
+        "entity_id": "ent_symptom_7b839cc80688",
+        "canonical_name": "ضيق تنفس",
+        "canonical_name_norm": "ضيق تنفس",
+        "entity_type": "Symptom",
+        "entity_quality": "high",
+        "mention_count": 11
+      },
+      {
+        "surface": "حساسية",
+        "surface_norm": "حساسيه",
+        "match_type": "alias",
+        "entity_id": "ent_diseasecondition_250910ab0701",
+        "canonical_name": "حساسية الصدر",
+        "canonical_name_norm": "حساسيه الصدر",
+        "entity_type": "DiseaseCondition",
+        "entity_quality": "high",
+        "mention_count": 4
+      }
+    ],
+    "semantic_candidate_entities": [],
+    "warnings": [],
+    "retrieval_plan": {
+      "retrieval_mode": "entity_seeded_vector_then_graph",
+      "semantic_search_targets": [
+        "entity",
+        "evidence",
+        "qa"
+      ],
+      "graph_expansion": {
+        "start_from_detected_entities": true,
+        "seed_entity_types": [
+          "DiseaseCondition",
+          "Symptom"
+        ],
+        "target_relation_types": [
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "relation_type_weights": {
+          "HAS_SYMPTOM": 1.0,
+          "SYMPTOM_OF": 1.0
+        },
+        "default_relation_weight": -0.2,
+        "max_hops": 1
+      },
+      "reranking_signals": [
+        "embedding_similarity",
+        "entity_exact_match",
+        "relation_type_match",
+        "evidence_confidence"
+      ]
+    }
+  },
+  {
+    "query_id": "trial_query_007",
+    "query": "ما الفحوصات المطلوبة للسكري؟",
+    "normalized_query": "ما الفحوصات المطلوبه للسكري?",
+    "expanded_terms": [],
+    "expanded_normalized_query": "ما الفحوصات المطلوبه للسكري? سكري السكري",
+    "intents": [
+      {
+        "intent": "diagnostic_test_request",
+        "answer_focus": "diagnostic tests and investigations",
+        "target_relation_types": [
+          "DIAGNOSED_BY",
+          "DIAGNOSES",
+          "INVESTIGATED_BY",
+          "INVESTIGATES"
+        ],
+        "matched_keywords": [
+          "فحوصات"
+        ],
+        "first_keyword_position": 3,
+        "intent_role": "primary",
+        "intent_weight": 1.0
+      }
+    ],
+    "detected_entities": [
+      {
+        "surface": "سكري",
+        "surface_norm": "سكري",
+        "match_type": "exact",
+        "entity_id": "ent_diseasecondition_aa9977b6b112",
+        "canonical_name": "سكري",
+        "canonical_name_norm": "سكري",
+        "entity_type": "DiseaseCondition",
+        "entity_quality": "high",
+        "mention_count": 3
+      },
+      {
+        "surface": "الفحوصات",
+        "surface_norm": "الفحوصات",
+        "match_type": "alias",
+        "entity_id": "ent_test_c4ec2e232baf",
+        "canonical_name": "الفحوصات المخبرية",
+        "canonical_name_norm": "الفحوصات المخبريه",
+        "entity_type": "Test",
+        "entity_quality": "high",
+        "mention_count": 1
+      }
+    ],
+    "semantic_candidate_entities": [],
+    "warnings": [],
+    "retrieval_plan": {
+      "retrieval_mode": "entity_seeded_vector_then_graph",
+      "semantic_search_targets": [
+        "entity",
+        "evidence",
+        "qa"
+      ],
+      "graph_expansion": {
+        "start_from_detected_entities": true,
+        "seed_entity_types": [
+          "DiseaseCondition",
+          "Test"
+        ],
+        "target_relation_types": [
+          "DIAGNOSED_BY",
+          "DIAGNOSES",
+          "INVESTIGATED_BY",
+          "INVESTIGATES"
+        ],
+        "relation_type_weights": {
+          "DIAGNOSED_BY": 1.0,
+          "DIAGNOSES": 1.0,
+          "INVESTIGATED_BY": 1.0,
+          "INVESTIGATES": 1.0
+        },
+        "default_relation_weight": -0.2,
+        "max_hops": 1
+      },
+      "reranking_signals": [
+        "embedding_similarity",
+        "entity_exact_match",
+        "relation_type_match",
+        "evidence_confidence"
+      ]
+    }
+  },
+  {
+    "query_id": "trial_query_008",
+    "query": "ما علاج التهاب المفاصل وألم المفاصل؟",
+    "normalized_query": "ما علاج التهاب المفاصل والم المفاصل?",
+    "expanded_terms": [],
+    "expanded_normalized_query": "ما علاج التهاب المفاصل والم المفاصل? الم",
+    "intents": [
+      {
+        "intent": "treatment_request",
+        "answer_focus": "treatments and medical recommendations",
+        "target_relation_types": [
+          "TREATED_BY",
+          "TREATS"
+        ],
+        "matched_keywords": [
+          "علاج"
+        ],
+        "first_keyword_position": 3,
+        "intent_role": "primary",
+        "intent_weight": 1.0
+      },
+      {
+        "intent": "symptom_check",
+        "answer_focus": "symptoms and possible associated conditions",
+        "target_relation_types": [
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "matched_keywords": [
+          "الم"
+        ],
+        "first_keyword_position": 37,
+        "intent_role": "secondary",
+        "intent_weight": 0.4
+      }
+    ],
+    "detected_entities": [
+      {
+        "surface": "التهاب المفاصل",
+        "surface_norm": "التهاب المفاصل",
+        "match_type": "exact",
+        "entity_id": "ent_diseasecondition_c8b276e9a67b",
+        "canonical_name": "التهاب المفاصل",
+        "canonical_name_norm": "التهاب المفاصل",
+        "entity_type": "DiseaseCondition",
+        "entity_quality": "high",
+        "mention_count": 2
+      },
+      {
+        "surface": "ألم المفاصل",
+        "surface_norm": "الم المفاصل",
+        "match_type": "exact",
+        "entity_id": "ent_symptom_202dedeff038",
+        "canonical_name": "ألم المفاصل",
+        "canonical_name_norm": "الم المفاصل",
+        "entity_type": "Symptom",
+        "entity_quality": "high",
+        "mention_count": 2
+      }
+    ],
+    "semantic_candidate_entities": [],
+    "warnings": [],
+    "retrieval_plan": {
+      "retrieval_mode": "entity_seeded_vector_then_graph",
+      "semantic_search_targets": [
+        "entity",
+        "evidence",
+        "qa"
+      ],
+      "graph_expansion": {
+        "start_from_detected_entities": true,
+        "seed_entity_types": [
+          "DiseaseCondition",
+          "Symptom"
+        ],
+        "target_relation_types": [
+          "TREATED_BY",
+          "TREATS",
+          "HAS_SYMPTOM",
+          "SYMPTOM_OF"
+        ],
+        "relation_type_weights": {
+          "TREATED_BY": 1.0,
+          "TREATS": 1.0,
+          "HAS_SYMPTOM": 0.4,
+          "SYMPTOM_OF": 0.4
+        },
+        "default_relation_weight": -0.2,
+        "max_hops": 1
+      },
+      "reranking_signals": [
+        "embedding_similarity",
+        "entity_exact_match",
+        "relation_type_match",
+        "evidence_confidence"
+      ]
+    }
+  }
+]

@@ -1,0 +1,34 @@
+﻿canonical,type,variants,usage
+داء السكري,disease,سكري | السكري | مرض السكر | داء السكري | سكر الدم,weak hint only; not a final graph entity
+ارتفاع ضغط الدم,disease,ضغط الدم | ارتفاع الضغط | ارتفاع ضغط الدم | الضغط المرتفع | الضغط,weak hint only; not a final graph entity
+انخفاض ضغط الدم,disease,انخفاض الضغط | انخفاض ضغط الدم | الضغط المنخفض,weak hint only; not a final graph entity
+التهاب,condition,التهاب | التهابات | ملتهب | ملتهبة,weak hint only; not a final graph entity
+حساسية,condition,حساسية | تحسس | الحساسيه | الحساسية,weak hint only; not a final graph entity
+ألم,symptom,ألم | الم | وجع | اوجاع,weak hint only; not a final graph entity
+صداع,symptom,صداع | الشقيقة | الصداع | الصداع النصفي,weak hint only; not a final graph entity
+حمى,symptom,حمى | حرارة | ارتفاع الحرارة | سخونة,weak hint only; not a final graph entity
+غثيان,symptom,غثيان | لعيان | غثيان وقيء,weak hint only; not a final graph entity
+قيء,symptom,قيء | استفراغ | ترجيع | تقيؤ,weak hint only; not a final graph entity
+إسهال,symptom,إسهال | اسهال | الاسهال,weak hint only; not a final graph entity
+إمساك,symptom,إمساك | امساك | الامساك,weak hint only; not a final graph entity
+دواء,treatment,دواء | دوائي | أدوية | ادوية | عقار | حبوب,weak hint only; not a final graph entity
+مضاد حيوي,treatment,مضاد حيوي | مضادات حيوية | مضاد حيوى | انتيبيوتيك,weak hint only; not a final graph entity
+جرعة,treatment,جرعة | الجرعة | جرعات,weak hint only; not a final graph entity
+تحليل مخبري,test,تحليل | تحاليل | فحص مخبري | فحوصات | اختبار,weak hint only; not a final graph entity
+تصوير بالرنين المغناطيسي,test,رنين مغناطيسي | الرنين المغناطيسي | mri | MRI,weak hint only; not a final graph entity
+أشعة,test,أشعة | اشعة | تصوير | صورة اشعة,weak hint only; not a final graph entity
+الحمل,condition,حمل | الحمل | حامل | الولادة,weak hint only; not a final graph entity
+الدورة الشهرية,condition,الدورة الشهرية | الدوره الشهريه | الطمث | الحيض,weak hint only; not a final graph entity
+تكيس المبايض,disease,تكيس المبايض | تكيسات المبايض | تكيس المبيض,weak hint only; not a final graph entity
+التهاب المسالك البولية,disease,التهاب المسالك | التهاب المسالك البولية | التهاب البول | حرقان البول,weak hint only; not a final graph entity
+فقر الدم,disease,فقر الدم | انيميا | أنيميا | نقص الدم,weak hint only; not a final graph entity
+القولون العصبي,disease,قولون عصبي | القولون العصبي | القولون,weak hint only; not a final graph entity
+اكتئاب,disease,اكتئاب | الاكتئاب | كآبة,weak hint only; not a final graph entity
+قلق,symptom,قلق | القلق | توتر | خوف,weak hint only; not a final graph entity
+وسواس قهري,disease,وسواس | وسواس قهري | الوسواس القهري,weak hint only; not a final graph entity
+ربو,disease,ربو | الربو | حساسية الصدر,weak hint only; not a final graph entity
+القلب,anatomy,قلب | القلب | الشرايين,weak hint only; not a final graph entity
+الكلى,anatomy,كلية | الكلى | الكليه | الكليتين,weak hint only; not a final graph entity
+الكبد,anatomy,كبد | الكبد,weak hint only; not a final graph entity
+المعدة,anatomy,معدة | المعدة | المعده,weak hint only; not a final graph entity
+الجلد,anatomy,جلد | الجلد | البشرة | البشره,weak hint only; not a final graph entity

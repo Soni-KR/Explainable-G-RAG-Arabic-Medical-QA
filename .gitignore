@@ -1,0 +1,26 @@
+.env
+.env.*
+!.env.example
+.venv-step6/
+.deps-step6/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Local/raw datasets. Keep download instructions instead of committing large/raw data.
+AHD.csv
+AHD_english.csv
+Distribution of Question and Answer per category.csv
+
+# Temporary/raw LLM call logs. Keep validated CSV/JSON outputs and reports instead.
+outputs/03_entity_extraction/ahd_llm_entity_extraction_raw_responses.jsonl
+outputs/**/**/*raw_responses*.jsonl
+outputs/**/**/*requests*.jsonl
+
+# Local tool folders
+.agents/
+.sixth/
+.git_empty_backup/
+
+# Exploration notebooks
+*.ipynb
