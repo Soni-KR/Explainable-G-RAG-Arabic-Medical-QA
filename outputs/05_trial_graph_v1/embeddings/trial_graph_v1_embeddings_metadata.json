@@ -1,9 +1,0 @@
-{
-  "step": "Step 6 - embeddings/indexing",
-  "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-  "document_count": 2145,
-  "embedded_document_count": 2145,
-  "documents_csv": "outputs/05_trial_graph_v1/embeddings/trial_graph_v1_embedding_documents.csv",
-  "embeddings_jsonl": "outputs/05_trial_graph_v1/embeddings/trial_graph_v1_embeddings.jsonl",
-  "frozen_graph": "trial_graph_v1"
-}
