@@ -8,10 +8,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TRIAL_DIR = ROOT / "outputs" / "05_trial_graph_v1"
 IMPORT_DIR = TRIAL_DIR / "import"
+SUPPLEMENTAL_DIR = TRIAL_DIR / "supplemental_facts"
 STEP8_DIR = TRIAL_DIR / "query_understanding"
 REPORT_MD = ROOT / "reports" / "trial_graph_v1_step8_query_understanding_report.md"
 
 ENTITIES_CSV = IMPORT_DIR / "trial_graph_v1_entities.csv"
+SUPPLEMENTAL_ENTITIES_CSV = SUPPLEMENTAL_DIR / "trial_graph_v1_supplemental_entities.csv"
 QA_SOURCES_CSV = IMPORT_DIR / "trial_graph_v1_qa_sources.csv"
 
 QUERY_UNDERSTANDING_JSON = STEP8_DIR / "trial_graph_v1_query_understanding.json"
@@ -58,6 +60,33 @@ QUERY_EXPANSIONS = {
     "ضيق النفس": ["ضيق تنفس"],
     "نهجان": ["ضيق تنفس"],
     "سكر": ["مرض السكري"],
+    "الحصى": ["حصى الكلى", "حصوة", "حصوات"],
+    "حصى": ["حصى الكلى", "حصوة", "حصوات"],
+    "حصوة": ["حصى الكلى", "حصوات"],
+    "القولون": ["القولون العصبي"],
+    "الغدة": ["الغدة الدرقية", "مرض الغدة الدرقية"],
+    "التروكسين": ["الغدة الدرقية", "مرض الغدة الدرقية"],
+    "قاطع الشهية": ["دواء", "ادوية", "عقم"],
+    "ماجريم": ["قاطع الشهية", "دواء", "عقم"],
+    "طقطقة الفك": ["الفك", "الم الفك"],
+    "طقطقه الفك": ["الفك", "الم الفك"],
+    "الفك الايسر": ["الفك", "الم الفك"],
+    "غازات": ["انتفاخ", "مغص", "القولون العصبي"],
+    "مغص": ["الم المعدة", "القولون العصبي"],
+    "ضغط الدم": ["ارتفاع ضغط الدم", "انخفاض ضغط الدم"],
+    "نبضات القلب": ["خفقان", "اضطراب نبض القلب"],
+    "الضربات الهاجرة": ["خفقان", "اضطراب نبض القلب"],
+    "ضربات هاجرة": ["خفقان", "اضطراب نبض القلب"],
+    "الاندرال": ["خفقان", "اضطراب نبض القلب"],
+    "فطريات اللسان": ["فطريات الفم", "التهاب اللسان", "اللسان"],
+    "فطريات": ["فطريات الفم", "التهاب"],
+    "الكوليسترول": ["دهون الدم", "ارتفاع الكوليسترول"],
+    "انفراص": ["العمود الفقري", "الم الظهر"],
+    "العجزي القطني": ["العمود الفقري", "الم الظهر"],
+    "عظام الجنين": ["الحمل", "الجنين", "العظام"],
+    "تكوين عظام": ["الحمل", "الجنين", "العظام"],
+    "بريمولوت": ["بريمولوت ن", "الحمل", "تشوهات الجنين"],
+    "بريمولوت ن": ["الحمل", "تشوهات الجنين"],
 }
 
 CANONICAL_FAMILY_OVERRIDES = {
@@ -89,12 +118,99 @@ GENERIC_ENTITY_SEED_BLOCKLIST = {
     "ألم",
 }
 
+QUERY_FRAGMENT_STOPWORDS = GENERIC_ENTITY_SEED_BLOCKLIST | {
+    "انا",
+    "اني",
+    "عندي",
+    "عند",
+    "لدي",
+    "لها",
+    "له",
+    "هل",
+    "ما",
+    "ماهو",
+    "ماهي",
+    "من",
+    "في",
+    "فى",
+    "عن",
+    "الى",
+    "الي",
+    "على",
+    "علي",
+    "او",
+    "ام",
+    "مع",
+    "هذا",
+    "هذه",
+    "ذلك",
+    "لكن",
+    "بعد",
+    "قبل",
+    "منذ",
+    "اليوم",
+    "الان",
+    "السلام",
+    "عليكم",
+    "دكتور",
+    "شكرا",
+    "ارجو",
+    "ممكن",
+    "يمكن",
+    "اعاني",
+    "اشعر",
+    "كان",
+    "كانت",
+    "سويت",
+    "عمل",
+    "عملت",
+    "تناولت",
+    "تنصحني",
+    "افيدوني",
+    "السبب",
+    "سبب",
+    "اسباب",
+    "الحل",
+    "طبيعي",
+    "طبيعيه",
+    "طبيعية",
+}
+
 INTENT_RULES = [
     {
         "intent": "treatment_request",
         "answer_focus": "treatments and medical recommendations",
-        "target_relation_types": ["TREATED_BY", "TREATS"],
+        "target_relation_types": ["TREATED_BY", "TREATS", "MANAGED_BY", "HAS_AFTERCARE_INSTRUCTION"],
         "keywords": ["علاج", "دواء", "ادويه", "ادوية", "اعالج", "مضاد", "جرعه", "عملية", "استخدام"],
+    },
+    {
+        "intent": "drug_safety_question",
+        "answer_focus": "drug safety, adverse effects, and pregnancy cautions",
+        "target_relation_types": [
+            "HAS_ADVERSE_EFFECT",
+            "CONTRAINDICATED_IN",
+            "SAFE_DURING_PREGNANCY",
+            "REQUIRES_MEDICAL_SUPERVISION_FOR",
+        ],
+        "keywords": ["اثار جانبية", "آثار جانبية", "مضرة", "مضر", "العقم", "تشوهات", "الحمل", "الجنين", "بريمولوت", "فولتارين", "اولفين"],
+    },
+    {
+        "intent": "normal_range_question",
+        "answer_focus": "normal ranges and measurement interpretation",
+        "target_relation_types": ["HAS_NORMAL_RANGE", "INTERPRETS"],
+        "keywords": ["المعدل الطبيعي", "الطبيعي", "ضغط الدم", "نبضات القلب", "نبض القلب", "نتيجة", "فحص"],
+    },
+    {
+        "intent": "aftercare_question",
+        "answer_focus": "post-procedure aftercare instructions",
+        "target_relation_types": ["HAS_AFTERCARE_INSTRUCTION", "AVOID_AFTER"],
+        "keywords": ["تنظيف", "القهوة", "الشاي", "بعد", "التقويم"],
+    },
+    {
+        "intent": "development_timeline_question",
+        "answer_focus": "pregnancy and fetal development timing",
+        "target_relation_types": ["DEVELOPS_DURING", "OCCURS_DURING"],
+        "keywords": ["أي شهر", "اي شهر", "تكوين", "عظام الجنين", "الجنين", "أشهر الحمل", "اشهر الحمل"],
     },
     {
         "intent": "diagnostic_test_request",
@@ -122,6 +238,8 @@ def relpath(path):
 
 
 def read_csv(path):
+    if not path.exists():
+        return []
     with path.open("r", encoding="utf-8-sig", newline="") as file:
         return list(csv.DictReader(file))
 
@@ -215,7 +333,7 @@ def clean_aliases(canonical_name, aliases):
 
 
 def load_entity_lexicon():
-    rows = read_csv(ENTITIES_CSV)
+    rows = read_csv(ENTITIES_CSV) + read_csv(SUPPLEMENTAL_ENTITIES_CSV)
     lexicon = []
     for row in rows:
         canonical_norm = normalize_arabic(row.get("canonical_name", ""))
@@ -242,6 +360,7 @@ def load_entity_lexicon():
                     "entity_type": row.get("entity_type", ""),
                     "entity_quality": row.get("entity_quality", ""),
                     "mention_count": int(row.get("mention_count") or 0),
+                    "qa_ids": parse_json_list(row.get("qa_ids", "")),
                 }
             )
     lexicon.sort(key=lambda item: (len(item["surface_norm"]), item["mention_count"]), reverse=True)
@@ -437,25 +556,86 @@ def build_warnings(intents):
     return warnings
 
 
+def extract_key_medical_fragments(normalized_query, limit=10):
+    tokens = [
+        token
+        for token in tokenize(normalized_query)
+        if len(token) >= 3 and token not in QUERY_FRAGMENT_STOPWORDS
+    ]
+    fragments = []
+    seen = set()
+    for ngram_size in (3, 2):
+        for index in range(0, max(0, len(tokens) - ngram_size + 1)):
+            phrase = " ".join(tokens[index : index + ngram_size])
+            if phrase not in seen:
+                fragments.append(phrase)
+                seen.add(phrase)
+    for token in tokens:
+        if token not in seen:
+            fragments.append(token)
+            seen.add(token)
+    return fragments[:limit]
+
+
+def build_evaluation_targets(detected_entities, semantic_candidate_entities):
+    hard_entity_ids = sorted({item["entity_id"] for item in detected_entities if item.get("entity_id")})
+    soft_entity_ids = sorted({item["entity_id"] for item in semantic_candidate_entities if item.get("entity_id")})
+    hard_qa_ids = sorted({qa_id for item in detected_entities for qa_id in item.get("qa_ids", []) if qa_id})
+    soft_qa_ids = sorted({qa_id for item in semantic_candidate_entities for qa_id in item.get("qa_ids", []) if qa_id})
+    return {
+        "relevance_source": "silver_from_step8_entity_links",
+        "hard_entity_ids": hard_entity_ids,
+        "soft_entity_ids": soft_entity_ids,
+        "relevant_entity_ids": sorted(set(hard_entity_ids) | set(soft_entity_ids)),
+        "hard_qa_ids": hard_qa_ids,
+        "soft_qa_ids": soft_qa_ids,
+        "relevant_qa_ids": sorted(set(hard_qa_ids) | set(soft_qa_ids)),
+    }
+
+
 def make_query_set(args):
     queries = []
+    start_index = 1
     if args.query:
         queries.extend(args.query)
     elif args.from_qa:
         qa_rows = read_csv(QA_SOURCES_CSV)
-        for row in qa_rows[: args.limit]:
+        if args.graph_covered_only:
+            qa_offset = 0
+            qa_limit = args.scan_limit
+        else:
+            qa_offset = args.offset
+            qa_limit = args.limit
+            start_index = args.offset + 1
+        qa_stop = qa_offset + qa_limit if qa_limit else None
+        for row in qa_rows[qa_offset:qa_stop]:
             queries.append(row.get("question", ""))
     else:
-        queries.extend(DEFAULT_QUERIES[: args.limit] if args.limit else DEFAULT_QUERIES)
-    rows = [{"query_id": f"trial_query_{index:03d}", "query": query} for index, query in enumerate(queries, start=1)]
-    write_csv(QUERY_SET_CSV, rows, ["query_id", "query"])
+        default_stop = args.offset + args.limit if args.limit else None
+        queries.extend(DEFAULT_QUERIES[args.offset:default_stop] if args.offset else DEFAULT_QUERIES[: args.limit] if args.limit else DEFAULT_QUERIES)
+        start_index = args.offset + 1
+    rows = [{"query_id": f"trial_query_{index:03d}", "query": query} for index, query in enumerate(queries, start=start_index)]
     return rows
+
+
+def select_graph_covered_results(results, limit, offset=0):
+    covered = [
+        result
+        for result in results
+        if result["detected_entities"] or result["semantic_candidate_entities"]
+    ]
+    stop = offset + limit if limit else None
+    selected = covered[offset:stop]
+    for index, result in enumerate(selected, start=offset + 1):
+        result["query_id"] = f"trial_query_{index:03d}"
+    return selected
 
 
 def understand_query(row, lexicon):
     normalized = normalize_arabic(row["query"])
     matchable_normalized = enrich_query_text_for_matching(normalized)
     expansions = expand_query(matchable_normalized)
+    key_fragments = extract_key_medical_fragments(matchable_normalized)
     expanded_normalized = normalize_arabic(" ".join([matchable_normalized] + expansions))
     intents = classify_intents(expanded_normalized)
     entities = detect_entities(matchable_normalized, lexicon)
@@ -465,10 +645,12 @@ def understand_query(row, lexicon):
         "query": row["query"],
         "normalized_query": normalized,
         "expanded_terms": expansions,
+        "key_medical_fragments": key_fragments,
         "expanded_normalized_query": expanded_normalized,
         "intents": intents,
         "detected_entities": entities,
         "semantic_candidate_entities": semantic_candidates,
+        "evaluation_targets": build_evaluation_targets(entities, semantic_candidates),
         "warnings": build_warnings(intents),
         "retrieval_plan": build_retrieval_plan(intents, entities),
     }
@@ -480,6 +662,7 @@ def flatten_result(result):
         "query": result["query"],
         "normalized_query": result["normalized_query"],
         "expanded_terms": json.dumps(result["expanded_terms"], ensure_ascii=False),
+        "key_medical_fragments": json.dumps(result.get("key_medical_fragments", []), ensure_ascii=False),
         "primary_intent": result["intents"][0]["intent"],
         "all_intents": json.dumps([item["intent"] for item in result["intents"]], ensure_ascii=False),
         "target_relation_types": json.dumps(result["retrieval_plan"]["graph_expansion"]["target_relation_types"], ensure_ascii=False),
@@ -487,6 +670,8 @@ def flatten_result(result):
         "detected_entity_types": json.dumps([item["entity_type"] for item in result["detected_entities"]], ensure_ascii=False),
         "detected_entity_match_types": json.dumps([item["match_type"] for item in result["detected_entities"]], ensure_ascii=False),
         "semantic_candidate_entity_names": json.dumps([item["canonical_name"] for item in result["semantic_candidate_entities"]], ensure_ascii=False),
+        "silver_relevant_entity_ids": json.dumps(result["evaluation_targets"]["relevant_entity_ids"], ensure_ascii=False),
+        "silver_relevant_qa_ids": json.dumps(result["evaluation_targets"]["relevant_qa_ids"], ensure_ascii=False),
         "relation_type_weights": json.dumps(result["retrieval_plan"]["graph_expansion"]["relation_type_weights"], ensure_ascii=False),
         "warnings": json.dumps(result["warnings"], ensure_ascii=False),
         "retrieval_mode": result["retrieval_plan"]["retrieval_mode"],
@@ -559,12 +744,36 @@ def main():
     parser.add_argument("--query", action="append", help="Arabic medical query. Can be repeated.")
     parser.add_argument("--from-qa", action="store_true", help="Use frozen QA source questions as a query set.")
     parser.add_argument("--limit", type=int, default=8)
+    parser.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        help="Skip this many input questions. With --graph-covered-only, skip this many graph-covered questions after scanning.",
+    )
+    parser.add_argument(
+        "--graph-covered-only",
+        action="store_true",
+        help="When using --from-qa, keep only questions with at least one graph entity or semantic expansion match.",
+    )
+    parser.add_argument(
+        "--scan-limit",
+        type=int,
+        default=250,
+        help="Maximum QA rows to scan when --graph-covered-only is enabled.",
+    )
     args = parser.parse_args()
 
     STEP8_DIR.mkdir(parents=True, exist_ok=True)
     lexicon = load_entity_lexicon()
     query_rows = make_query_set(args)
     results = [understand_query(row, lexicon) for row in query_rows]
+    if args.graph_covered_only:
+        results = select_graph_covered_results(results, args.limit, args.offset)
+    write_csv(
+        QUERY_SET_CSV,
+        [{"query_id": result["query_id"], "query": result["query"]} for result in results],
+        ["query_id", "query"],
+    )
     QUERY_UNDERSTANDING_JSON.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
     write_csv(
         QUERY_UNDERSTANDING_CSV,
@@ -574,6 +783,7 @@ def main():
             "query",
             "normalized_query",
             "expanded_terms",
+            "key_medical_fragments",
             "primary_intent",
             "all_intents",
             "target_relation_types",
@@ -581,6 +791,8 @@ def main():
             "detected_entity_types",
             "detected_entity_match_types",
             "semantic_candidate_entity_names",
+            "silver_relevant_entity_ids",
+            "silver_relevant_qa_ids",
             "relation_type_weights",
             "warnings",
             "retrieval_mode",

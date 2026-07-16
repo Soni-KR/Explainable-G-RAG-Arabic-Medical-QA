@@ -70,6 +70,10 @@ def rank_reason(edge):
         parts.append("has original/direct edge support")
     if edge["semantic_support"] >= 0.5:
         parts.append("strong semantic support")
+    if edge["evidence_relevance"] >= 0.25:
+        parts.append("evidence overlaps query terms")
+    if edge["unique_qa_count"] > 1:
+        parts.append(f"{edge['unique_qa_count']} distinct QA sources")
     return "; ".join(parts) if parts else "kept as lower-priority supporting graph edge"
 
 
@@ -96,17 +100,22 @@ def aggregate_query_edges(query_id, query_record, rows):
         max_score = top_scores[0]
         mean_top_score = sum(top_scores) / len(top_scores)
         evidence_count = len({row.get("qa_id", "") + "|" + row.get("evidence", "") for row in edge_rows})
+        unique_qa_count = len({row.get("qa_id", "") for row in edge_rows if row.get("qa_id", "")})
         direct_edge_count = sum(1 for row in edge_rows if row.get("edge_direction") == "direct")
         semantic_support = max(to_float(row.get("semantic_support")) for row in edge_rows)
+        evidence_relevance = max(to_float(row.get("evidence_relevance")) for row in edge_rows)
         relation_weight = max(to_float(row.get("relation_weight")) for row in edge_rows)
         primary_intent_match = best.get("graph_relation_type", "") in primary_relation_types
 
         rerank_score = (
-            0.66 * max_score
-            + 0.16 * mean_top_score
-            + 0.08 * min(evidence_count, 3) / 3
+            0.52 * max_score
+            + 0.12 * mean_top_score
+            + 0.10 * (1 if primary_intent_match else 0)
+            + 0.10 * min(evidence_count, 3) / 3
+            + 0.08 * min(unique_qa_count, 3) / 3
+            + 0.05 * evidence_relevance
             + 0.06 * min(direct_edge_count, 1)
-            + 0.04 * max(relation_weight, 0)
+            + 0.07 * max(relation_weight, 0)
         )
 
         edge = {
@@ -116,8 +125,10 @@ def aggregate_query_edges(query_id, query_record, rows):
             "max_hybrid_score": round(max_score, 6),
             "mean_top_hybrid_score": round(mean_top_score, 6),
             "evidence_count": evidence_count,
+            "unique_qa_count": unique_qa_count,
             "direct_edge_count": direct_edge_count,
             "semantic_support": round(semantic_support, 6),
+            "evidence_relevance": round(evidence_relevance, 6),
             "relation_weight": round(relation_weight, 6),
             "primary_intent_match": primary_intent_match,
             "source_entity_id": signature[0],
@@ -134,7 +145,18 @@ def aggregate_query_edges(query_id, query_record, rows):
         edge["rank_reason"] = rank_reason(edge)
         reranked_edges.append(edge)
 
-        for evidence_rank, row in enumerate(edge_rows[:3], start=1):
+        selected_evidence = []
+        seen_qa = set()
+        for row in edge_rows:
+            qa_id = row.get("qa_id", "")
+            if qa_id and qa_id in seen_qa:
+                continue
+            if qa_id:
+                seen_qa.add(qa_id)
+            selected_evidence.append(row)
+            if len(selected_evidence) >= 3:
+                break
+        for evidence_rank, row in enumerate(selected_evidence, start=1):
             evidence_rows.append(
                 {
                     "query_id": query_id,
@@ -143,6 +165,7 @@ def aggregate_query_edges(query_id, query_record, rows):
                     "target_entity_id": signature[2],
                     "evidence_rank": evidence_rank,
                     "hybrid_score": row.get("hybrid_score", ""),
+                    "evidence_relevance": row.get("evidence_relevance", ""),
                     "qa_id": row.get("qa_id", ""),
                     "evidence": row.get("evidence", ""),
                     "reason": row.get("reason", ""),
@@ -252,8 +275,10 @@ def main():
             "max_hybrid_score",
             "mean_top_hybrid_score",
             "evidence_count",
+            "unique_qa_count",
             "direct_edge_count",
             "semantic_support",
+            "evidence_relevance",
             "relation_weight",
             "primary_intent_match",
             "source_entity_id",
@@ -278,6 +303,7 @@ def main():
             "target_entity_id",
             "evidence_rank",
             "hybrid_score",
+            "evidence_relevance",
             "qa_id",
             "evidence",
             "reason",

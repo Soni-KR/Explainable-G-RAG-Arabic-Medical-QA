@@ -14,21 +14,27 @@ This implements the medical query-understanding layer before semantic retrieval 
 
 ## Counts
 
-- Queries processed: 8
-- Queries with detected graph entities: 8
+- Queries processed: 50
+- Queries with detected graph entities: 50
 
 ## Intent Distribution
 
-- cause_or_condition_question: 2
-- diagnostic_test_request: 2
-- symptom_check: 5
-- treatment_request: 3
+- aftercare_question: 4
+- cause_or_condition_question: 12
+- development_timeline_question: 2
+- diagnostic_test_request: 8
+- drug_safety_question: 4
+- general_medical_question: 11
+- normal_range_question: 1
+- symptom_check: 19
+- treatment_request: 16
 
 ## Detected Entity Type Distribution
 
-- DiseaseCondition: 9
-- Symptom: 8
-- Test: 1
+- DiseaseCondition: 51
+- Symptom: 35
+- Test: 8
+- Treatment: 18
 
 ## Output Files
 

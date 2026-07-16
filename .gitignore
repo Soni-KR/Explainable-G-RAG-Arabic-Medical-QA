@@ -11,8 +11,12 @@ __pycache__/
 AHD.csv
 AHD_english.csv
 Distribution of Question and Answer per category.csv
+neo4j.dump
+neo4j_dump/
 
-# Temporary request files are deleted after successful processing.
+# Temporary/raw LLM call logs. Keep validated CSV/JSON outputs and reports instead.
+outputs/03_entity_extraction/ahd_llm_entity_extraction_raw_responses.jsonl
+outputs/**/**/*raw_responses*.jsonl
 outputs/**/**/*requests*.jsonl
 
 # Local tool folders
@@ -22,5 +26,3 @@ outputs/**/**/*requests*.jsonl
 
 # Exploration notebooks
 *.ipynb
-
-outputs/entities/entity_extraction_raw.jsonl
