@@ -33,6 +33,16 @@ def item_answer_relevance(item: RetrievedEvidence, query: str) -> float:
     )
 
 
+def has_strong_semantic_support(item: RetrievedEvidence, config: AppConfig) -> bool:
+    """Recognize vetted vector evidence without weakening hard safety gates."""
+    return bool(
+        item.metadata.get("strong_semantic_match")
+        and float(item.metadata.get("vector_similarity") or 0.0)
+        >= config.retrieval.context_semantic_min_score
+        and not item.metadata.get("anatomy_mismatch")
+    )
+
+
 def select_context_evidence(
     subgraph: RerankedSubgraph,
     query: str,
@@ -79,12 +89,15 @@ def select_context_evidence(
     selected: list[RetrievedEvidence] = []
     per_qa: dict[str, int] = defaultdict(int)
     for item in ranked:
-        if item.score < score_floor:
+        strong_semantic_support = has_strong_semantic_support(item, config)
+        if item.score < score_floor and not strong_semantic_support:
             continue
         question_match = lexical_overlap(query, item.question)
         passage_match = lexical_overlap(query, f"{item.text} {item.answer}")
         answer_relevance = item_answer_relevance(item, query)
-        if answer_relevance < answer_relevance_floor or max(question_match, passage_match) < 0.05:
+        if answer_relevance < answer_relevance_floor:
+            continue
+        if max(question_match, passage_match) < 0.05 and not strong_semantic_support:
             continue
         qa_key = item.qa_id or item.source_id
         if qa_key and per_qa[qa_key] >= 2:
@@ -179,6 +192,7 @@ def build_evidence_context(
                 "answer_relevance": evidence.metadata.get("answer_relevance", 0.0),
                 "entity_identity": evidence.metadata.get("entity_identity", 0.0),
                 "intent_support": evidence.metadata.get("intent_support", 0.0),
+                "vector_similarity": evidence.metadata.get("vector_similarity", 0.0),
                 "relation_ids": relation_ids,
             }
         )

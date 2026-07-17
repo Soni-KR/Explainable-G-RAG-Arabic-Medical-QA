@@ -107,11 +107,25 @@ def rerank_subgraph(
 
     reranked_evidence: list[RetrievedEvidence] = []
     for item in bundle.evidence:
+        original_score = max(0.0, min(1.0, float(item.score or 0.0)))
         question_relevance = lexical_overlap(query, item.question)
         passage_relevance = lexical_overlap(query, " ".join([item.text, item.answer]))
         relation_support = 1.0 if selected_relation_ids.intersection(item.relation_ids) else 0.0
         qa_support = 1.0 if item.qa_id and item.qa_id in selected_qa_ids else 0.0
         direct_qa = 1.0 if item.evidence_id.startswith("qa::") else 0.0
+        inferred_vector_candidate = bool(
+            not item.relation_ids
+            and item.evidence_id.startswith(("qa::", "mention::"))
+        )
+        vector_similarity = float(
+            item.metadata.get("vector_similarity")
+            or (
+                original_score
+                if item.metadata.get("retrieval_channel") == "vector"
+                or inferred_vector_candidate
+                else 0.0
+            )
+        )
         entity_identity = medical_identity_similarity(query, item.question)
         if relation_support:
             entity_identity = max(entity_identity, medical_identity_similarity(query, item.text))
@@ -138,6 +152,18 @@ def rerank_subgraph(
                 + 0.20
                 - (0.30 if anatomy_mismatch else 0.0),
             )
+        semantic_anchor = max(question_relevance, passage_relevance, entity_identity)
+        strong_semantic_match = bool(
+            vector_similarity >= config.retrieval.context_semantic_min_score
+            and (semantic_anchor >= 0.05 or vector_similarity >= 0.90)
+        )
+        if strong_semantic_match and not anatomy_mismatch:
+            semantic_answer_relevance = (
+                0.55 * vector_similarity
+                + 0.25 * semantic_anchor
+                + 0.20 * evidence_intent_support
+            )
+            answer_relevance = max(answer_relevance, semantic_answer_relevance)
         if anatomy_mismatch:
             answer_relevance = 0.0
         query_relevance = (
@@ -165,6 +191,10 @@ def rerank_subgraph(
                 "entity_identity": round(entity_identity, 6),
                 "intent_support": round(evidence_intent_support, 6),
                 "anatomy_mismatch": anatomy_mismatch,
+                "retrieval_channel": item.metadata.get("retrieval_channel")
+                or ("vector" if inferred_vector_candidate else "graph"),
+                "vector_similarity": round(vector_similarity, 6),
+                "strong_semantic_match": strong_semantic_match,
                 "answer_relevance": round(max(0.0, min(1.0, answer_relevance)), 6),
             }
         )

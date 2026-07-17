@@ -35,8 +35,10 @@ from src.models import (
     EvidenceContextBundle,
     ExtractedMedicalPhrase,
     GeneratedAnswer,
+    HybridRetrievalBundle,
     LinkedMedicalEntity,
     QueryEntityLinkingResult,
+    RetrievalPlanResult,
     RerankedSubgraph,
     RetrievedEvidence,
     RetrievedMedicalRelation,
@@ -128,6 +130,10 @@ def linking_from_dict(payload: dict[str, Any]) -> QueryEntityLinkingResult:
     return QueryEntityLinkingResult(**values)
 
 
+def retrieval_plan_from_dict(payload: dict[str, Any]) -> RetrievalPlanResult:
+    return RetrievalPlanResult(**dict(payload))
+
+
 def generated_from_dict(payload: dict[str, Any]) -> GeneratedAnswer:
     values = dict(payload)
     values["claims"] = [AnswerClaim(**item) for item in values.get("claims", [])]
@@ -150,18 +156,72 @@ def context_fingerprint(context: EvidenceContextBundle, config: AppConfig) -> st
     return hashlib.sha256(encoded).hexdigest()
 
 
+def evaluation_pipeline_fingerprint(
+    retrieval_file: Path,
+    config: AppConfig,
+    rerank_frozen_retrieval: bool,
+) -> str:
+    """Bind resumable records to the exact evidence-selection implementation."""
+    root = Path(__file__).resolve().parents[1]
+    runtime_files = (
+        root / "src" / "step10_rerank_subgraph.py",
+        root / "src" / "step11_build_evidence_context.py",
+        root / "src" / "step12_generate_grounded_answer.py",
+    )
+    payload = {
+        "retrieval_file_sha256": hashlib.sha256(retrieval_file.read_bytes()).hexdigest(),
+        "runtime_sha256": {
+            str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in runtime_files
+        },
+        "rerank_frozen_retrieval": rerank_frozen_retrieval,
+        "graph_version": config.graph_version,
+        "embedding_model": config.embeddings.model_name,
+        "retrieval": asdict(config.retrieval),
+        "answer_model": config.answer_generation.model,
+        "answer_prompt_version": config.answer_generation.prompt_version,
+        "answer_temperature": config.answer_generation.temperature,
+        "answer_reasoning_effort": config.answer_generation.reasoning_effort,
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def rate_limit_delay(base_seconds: float, attempt: int) -> float:
     return min(300.0, max(1.0, base_seconds) * (2 ** max(0, attempt - 1)))
 
 
-def frozen_subgraph(record: dict[str, Any], primary_intent: str) -> RerankedSubgraph:
-    return RerankedSubgraph(
+def frozen_subgraph(
+    record: dict[str, Any],
+    primary_intent: str,
+    *,
+    rerank: bool = False,
+    config: AppConfig | None = None,
+) -> RerankedSubgraph:
+    saved = RerankedSubgraph(
         query=str(record.get("query") or ""),
         primary_intent=primary_intent,
         relations=[RetrievedMedicalRelation(**item) for item in record.get("relations", [])],
         evidence=[RetrievedEvidence(**item) for item in record.get("evidence", [])],
         warnings=[str(item) for item in record.get("warnings", [])],
     )
+    if not rerank:
+        return saved
+
+    plan_payload = dict(record.get("retrieval_plan") or {})
+    if not plan_payload:
+        raise ValueError("Frozen retrieval record is missing its retrieval plan.")
+    plan = retrieval_plan_from_dict(plan_payload)
+    bundle = HybridRetrievalBundle(
+        query=saved.query,
+        normalized_query=str(record.get("query_analysis", {}).get("normalized_query") or ""),
+        reformulated_query=plan.reformulated_query,
+        plan=plan,
+        relations=saved.relations,
+        evidence=saved.evidence,
+        warnings=saved.warnings,
+    )
+    return rerank_subgraph(bundle, config=config)
 
 
 def generate_llm_only(query: str, config: AppConfig) -> GeneratedAnswer:
@@ -466,6 +526,8 @@ def run_resumable_frozen_generation(
     max_rate_limit_retries: int,
     retry_base_seconds: float,
     resume: bool,
+    rerank_frozen_retrieval: bool,
+    allow_live_step08: bool,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
     """Generate from frozen Step 10 outputs with append-only API/checkpoint caches."""
     frozen_rows = {str(row["query_id"]): row for row in read_jsonl(retrieval_file)}
@@ -484,32 +546,48 @@ def run_resumable_frozen_generation(
     generation_cache_path = cache_directory / "step12_success.jsonl"
     records_path = cache_directory / "completed_records.jsonl"
     audits_path = cache_directory / "completed_audits.jsonl"
+    pipeline_fingerprint = evaluation_pipeline_fingerprint(
+        retrieval_file,
+        config,
+        rerank_frozen_retrieval,
+    )
 
     analysis_cache: dict[str, dict[str, Any]] = {}
     for query_id, row in frozen_rows.items():
         analysis_payload = dict(row.get("query_analysis") or {})
         linking_payload = dict(row.get("entity_linking") or {})
-        if analysis_payload and linking_payload and analysis_succeeded(analysis_payload):
+        # Frozen retrieval means frozen Step 8. Preserve the exact saved payload,
+        # including warnings/fallback classifications, so modes remain comparable.
+        if analysis_payload and linking_payload:
             analysis_cache[query_id] = {
                 "query_id": query_id,
                 "analysis": analysis_payload,
                 "linking": linking_payload,
                 "source": str(retrieval_file),
             }
-    for source_file in step08_source_files:
-        for row in read_jsonl(source_file):
-            analysis_payload = dict((row.get("raw") or {}).get("query_analysis") or {})
-            linking_payload = dict((row.get("raw") or {}).get("entity_linking") or {})
-            if analysis_payload and linking_payload and analysis_succeeded(analysis_payload):
-                analysis_cache[str(row["query_id"])] = {
-                    "query_id": str(row["query_id"]),
-                    "analysis": analysis_payload,
-                    "linking": linking_payload,
-                    "source": str(source_file),
-                }
+    if allow_live_step08:
+        for source_file in step08_source_files:
+            for row in read_jsonl(source_file):
+                analysis_payload = dict((row.get("raw") or {}).get("query_analysis") or {})
+                linking_payload = dict((row.get("raw") or {}).get("entity_linking") or {})
+                if analysis_payload and linking_payload and analysis_succeeded(analysis_payload):
+                    analysis_cache[str(row["query_id"])] = {
+                        "query_id": str(row["query_id"]),
+                        "analysis": analysis_payload,
+                        "linking": linking_payload,
+                        "source": str(source_file),
+                    }
     for row in read_jsonl(analysis_cache_path):
-        if analysis_succeeded(dict(row.get("analysis") or {})):
+        if allow_live_step08 and analysis_succeeded(dict(row.get("analysis") or {})):
             analysis_cache[str(row["query_id"])] = row
+
+    missing_frozen_analysis = sorted(expected_ids - set(analysis_cache))
+    if missing_frozen_analysis and not allow_live_step08:
+        raise ValueError(
+            "Frozen retrieval is missing Step 8 analysis/linking for "
+            f"{len(missing_frozen_analysis)} query IDs; use --allow-live-step08 only "
+            "for a non-frozen experiment."
+        )
 
     generation_cache: dict[tuple[str, str], dict[str, Any]] = {}
     for row in read_jsonl(generation_cache_path):
@@ -520,6 +598,15 @@ def run_resumable_frozen_generation(
     completed_records = {
         str(row["query_id"]): row for row in read_jsonl(records_path)
     }
+    existing_pipeline_fingerprints = {
+        str((row.get("raw") or {}).get("pipeline_fingerprint") or "")
+        for row in completed_records.values()
+    }
+    if completed_records and existing_pipeline_fingerprints != {pipeline_fingerprint}:
+        raise RuntimeError(
+            "Generation cache belongs to a different evaluation pipeline version; "
+            "use a new --run-id instead of mixing pre-fix and post-fix records."
+        )
     completed_audits = {
         str(row["query_id"]): row for row in read_jsonl(audits_path)
     }
@@ -544,6 +631,10 @@ def run_resumable_frozen_generation(
             linking = linking_from_dict(dict(cached_analysis["linking"]))
             cache_stats["step08_reused"] += 1
         else:
+            if not allow_live_step08:
+                raise RuntimeError(
+                    f"Frozen Step 8 payload is unavailable for {gold.query_id}; no live call was made."
+                )
             last_warning = ""
             for attempt in range(1, max_rate_limit_retries + 1):
                 pacer.wait()
@@ -582,7 +673,14 @@ def run_resumable_frozen_generation(
                     f"Cache preserved at {cache_directory}."
                 )
 
-        subgraph = frozen_subgraph(frozen, analysis.primary_intent)
+        started = perf_counter()
+        subgraph = frozen_subgraph(
+            frozen,
+            analysis.primary_intent,
+            rerank=rerank_frozen_retrieval,
+            config=config,
+        )
+        reranking_ms = round((perf_counter() - started) * 1000.0, 3)
         started = perf_counter()
         context = build_evidence_context(subgraph, analysis.reformulated_query, config=config)
         context_ms = round((perf_counter() - started) * 1000.0, 3)
@@ -594,7 +692,10 @@ def run_resumable_frozen_generation(
             cache_stats["step12_reused"] += 1
         else:
             for attempt in range(1, max_rate_limit_retries + 1):
-                pacer.wait()
+                # Empty contexts return an immediate insufficient-evidence fallback
+                # and never call the provider, so they must not consume API pacing.
+                if context.evidence_items:
+                    pacer.wait()
                 started = perf_counter()
                 generated = generate_grounded_answer(context, config=config)
                 generation_ms += (perf_counter() - started) * 1000.0
@@ -620,7 +721,8 @@ def run_resumable_frozen_generation(
             else:
                 raise RuntimeError(
                     f"Step 12 rate limit persisted for {gold.query_id}; rerun with --resume. "
-                    f"Cache preserved at {cache_directory}."
+                    f"Cache preserved at {cache_directory}. "
+                    f"Provider details: {generated.fallback_reason}"
                 )
             if (
                 generated.generation_status != "generated"
@@ -628,7 +730,8 @@ def run_resumable_frozen_generation(
             ):
                 raise RuntimeError(
                     f"Step 12 rate limit persisted for {gold.query_id}; rerun with --resume. "
-                    f"Cache preserved at {cache_directory}."
+                    f"Cache preserved at {cache_directory}. "
+                    f"Provider details: {generated.fallback_reason}"
                 )
 
         started = perf_counter()
@@ -647,7 +750,7 @@ def run_resumable_frozen_generation(
             "step08_query_understanding": round(analysis_ms, 3),
             "step08_retrieval_planning": 0.0,
             "step09_hybrid_retrieval": 0.0,
-            "step10_subgraph_reranking": 0.0,
+            "step10_subgraph_reranking": reranking_ms,
             "step11_context_construction": context_ms,
             "step12_answer_generation": round(generation_ms, 3),
             "step13_claim_extraction": claim_ms,
@@ -676,6 +779,7 @@ def run_resumable_frozen_generation(
                 "reliability": asdict(reliability),
                 "frozen_retrieval_source": str(retrieval_file),
                 "context_fingerprint": fingerprint,
+                "pipeline_fingerprint": pipeline_fingerprint,
             },
             warnings=[*analysis.warnings, *subgraph.warnings, *generated.warnings],
             generation_status=generated.generation_status,
@@ -722,6 +826,16 @@ def main() -> int:
         help="Optional prior generation JSONL containing successful Step 8 outputs.",
     )
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument(
+        "--rerank-frozen-retrieval",
+        action="store_true",
+        help="Apply the production Step 10 reranker to saved retrieval candidates before Step 11.",
+    )
+    parser.add_argument(
+        "--allow-live-step08",
+        action="store_true",
+        help="Permit new Step 8 calls when frozen analysis is missing (disabled by default).",
+    )
     parser.add_argument("--request-interval-seconds", type=float, default=8.0)
     parser.add_argument("--max-rate-limit-retries", type=int, default=6)
     parser.add_argument("--rate-limit-backoff-seconds", type=float, default=30.0)
@@ -763,6 +877,8 @@ def main() -> int:
                 max_rate_limit_retries=args.max_rate_limit_retries,
                 retry_base_seconds=args.rate_limit_backoff_seconds,
                 resume=args.resume,
+                rerank_frozen_retrieval=args.rerank_frozen_retrieval,
+                allow_live_step08=args.allow_live_step08,
             )
         aggregate = {"full_pipeline": aggregate_mode(records)}
         manifest = build_manifest(

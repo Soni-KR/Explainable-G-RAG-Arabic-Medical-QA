@@ -23,6 +23,21 @@ checkpoint state. It currently contains 12 completed records, five successful St
 ID. On completion, the runner will create matching `generation/` and `claim_audit/`
 directories without rerunning frozen retrieval.
 
+## End-to-End Retrieval Ablation
+
+- `evaluation_v1_e2e_lexical_only_100q_v2` completed under the pre-semantic-fix
+  context selector: 9 generated answers and 91 insufficient-evidence fallbacks.
+- `evaluation_v1_e2e_vector_only_100q_v1` stopped after 13 questions and belongs to
+  the same pre-fix pipeline. Do not resume it into a post-fix comparison.
+- The post-fix offline check reranks the frozen raw hybrid candidates and retains
+  context for 74/100 questions, compared with 31/100 in the saved pre-fix full
+  hybrid output. A new run ID is required for post-fix generation.
+
+The reviewed supplemental sidecar is not a remedy for this coverage issue: only
+four relations passed its acceptance gates, it activated for 0/35 clean evaluation
+queries, and its measured context delta was zero. It remains excluded from
+`final_v1` pending a larger independently reviewed export.
+
 Each completed run keeps raw JSONL, `metrics.json`, and `manifest.json`. Manifests
 record graph/model/index configuration, thresholds, top-k values, source hashes,
 runtime versions, and Git state without credentials.

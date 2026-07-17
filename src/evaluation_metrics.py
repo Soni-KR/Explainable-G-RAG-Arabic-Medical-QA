@@ -8,6 +8,20 @@ from pathlib import Path
 from typing import Any, Hashable, Iterable, Sequence
 
 
+_BERT_SCORERS: dict[str, Any] = {}
+
+
+def _get_bert_scorer(lang: str) -> Any:
+    """Load each language-specific BERTScore model once per evaluation process."""
+    try:
+        from bert_score import BERTScorer  # type: ignore[import-not-found]
+    except ImportError:
+        return None
+    if lang not in _BERT_SCORERS:
+        _BERT_SCORERS[lang] = BERTScorer(lang=lang, rescale_with_baseline=False)
+    return _BERT_SCORERS[lang]
+
+
 def _safe_divide(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator else 0.0
 
@@ -136,11 +150,10 @@ def bertscore_f1(candidate: str, reference: str) -> dict[str, Any]:
     """Compute Arabic BERTScore when both a reference and the optional package exist."""
     if not reference.strip():
         return {"status": "unavailable", "reason": "A reference answer was not supplied."}
-    try:
-        from bert_score import score as bert_score  # type: ignore[import-not-found]
-    except ImportError:
+    scorer = _get_bert_scorer("ar")
+    if scorer is None:
         return {"status": "unavailable", "reason": "The optional bert-score package is not installed."}
-    _, _, f1 = bert_score([candidate], [reference], lang="ar", verbose=False)
+    _, _, f1 = scorer.score([candidate], [reference])
     return {"status": "computed", "bertscore_f1": _rounded(float(f1[0]))}
 
 
@@ -151,14 +164,13 @@ def entity_bertscore_f1(
     """Compute symmetric mean-best BERTScore for independently annotated entity names."""
     if not predicted_names or not gold_names:
         return {"status": "unavailable", "reason": "Predicted and gold entity names are required."}
-    try:
-        from bert_score import score as bert_score  # type: ignore[import-not-found]
-    except ImportError:
+    scorer = _get_bert_scorer("ar")
+    if scorer is None:
         return {"status": "unavailable", "reason": "The optional bert-score package is not installed."}
 
     candidates = [candidate for candidate in predicted_names for _ in gold_names]
     references = [reference for _ in predicted_names for reference in gold_names]
-    _, _, pair_f1 = bert_score(candidates, references, lang="ar", verbose=False)
+    _, _, pair_f1 = scorer.score(candidates, references)
     matrix = [
         [float(pair_f1[row * len(gold_names) + column]) for column in range(len(gold_names))]
         for row in range(len(predicted_names))

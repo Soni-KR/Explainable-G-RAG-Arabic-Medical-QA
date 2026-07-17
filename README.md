@@ -281,11 +281,22 @@ now exposes and combines semantic support, entity identity, intent match, eviden
 quality, and validated confidence while penalizing anatomical mismatch, generic
 entities, and type conflicts.
 
+The semantic-context correction preserves each vector candidate's original E5
+similarity in metadata. This prevents Step 10 from replacing a strong semantic
+signal with a lower aggregate score before Step 11 can inspect it.
+
 ### Step 11 changes
 
 The original context nearly always supplied twelve items. It now uses minimum score,
 relative score margin, source balance, deduplication, and a configurable maximum.
 Only useful `R*` relation facts and `E*` evidence cards become the citation allowlist.
+
+Step 11 may also retain a high-confidence vector paraphrase when its E5 score is at
+least `AHD_CONTEXT_SEMANTIC_MIN_SCORE` (default `0.84`). Intent and anatomical
+mismatch gates remain mandatory. In the frozen 100-question offline diagnostic,
+context coverage increased from 31 to 74 questions while mean reference-context
+cosine remained stable (`0.8494` before, `0.8463` after). These are diagnostic
+dataset-derived comparisons, not human-confirmed retrieval metrics.
 
 ```powershell
 python src/step17_build_explainable_output.py --query "ما علاج الربو؟" --context-only

@@ -396,6 +396,10 @@ def collect_evidence(
                     category=str(result.metadata.get("category") or ""),
                     source_quality=str(result.metadata.get("source_quality") or ""),
                     score=result.score,
+                    metadata={
+                        "retrieval_channel": "vector",
+                        "vector_similarity": result.score,
+                    },
                 )
             )
         elif result.document_type == "QARecord":
@@ -410,6 +414,10 @@ def collect_evidence(
                     category=str(result.metadata.get("category") or ""),
                     source_quality=str(result.metadata.get("source_quality") or ""),
                     score=result.score,
+                    metadata={
+                        "retrieval_channel": "vector",
+                        "vector_similarity": result.score,
+                    },
                 )
             )
 

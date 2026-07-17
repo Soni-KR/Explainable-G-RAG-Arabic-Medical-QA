@@ -140,6 +140,38 @@ class RetrievalQualityGuardTests(unittest.TestCase):
         self.assertLess(len(context.evidence_items), 5)
         self.assertLessEqual(len(context.evidence_items), 6)
 
+    def test_context_accepts_a_high_confidence_vector_paraphrase(self) -> None:
+        semantic_qa = RetrievedEvidence(
+            evidence_id="qa::semantic",
+            source_id="semantic",
+            qa_id="semantic",
+            text="persistent cough management",
+            question="guidance for a respiratory complaint",
+            score=0.92,
+            metadata={
+                "retrieval_channel": "vector",
+                "vector_similarity": 0.92,
+            },
+        )
+        general_plan = replace(
+            plan(),
+            primary_intent="general_medical_advice",
+            preferred_relation_types=[],
+        )
+        subgraph = rerank_subgraph(
+            HybridRetrievalBundle(
+                query="help for a cough",
+                normalized_query="help for a cough",
+                reformulated_query="help for a cough",
+                plan=general_plan,
+                evidence=[semantic_qa],
+            ),
+            config=AppConfig(),
+        )
+        context = build_evidence_context(subgraph, "help for a cough", config=AppConfig())
+        self.assertEqual(len(context.evidence_items), 1)
+        self.assertEqual(context.evidence_items[0]["vector_similarity"], 0.92)
+
     def test_context_preserves_one_relation_backed_evidence_item(self) -> None:
         vector_item = RetrievedEvidence(
             evidence_id="mention::vector",

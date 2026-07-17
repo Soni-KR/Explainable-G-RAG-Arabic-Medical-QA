@@ -208,6 +208,24 @@ def retryable_generation_error(exc: Exception) -> bool:
     return isinstance(exc, (urllib.error.URLError, TimeoutError, ValueError, KeyError, json.JSONDecodeError))
 
 
+def describe_http_error(exc: urllib.error.HTTPError) -> str:
+    """Return useful rate-limit diagnostics without exposing request credentials."""
+    selected_headers: list[str] = []
+    if exc.headers:
+        for name, value in exc.headers.items():
+            lowered = name.lower()
+            if lowered == "retry-after" or lowered.startswith("x-ratelimit-"):
+                selected_headers.append(f"{lowered}={value}")
+    try:
+        body = " ".join(exc.read().decode("utf-8", errors="replace").split())
+    except Exception:
+        body = ""
+    parts = [f"HTTPError {exc.code}", *selected_headers]
+    if body:
+        parts.append(f"body={body[:500]}")
+    return "; ".join(parts)
+
+
 def generate_grounded_answer(
     context: EvidenceContextBundle,
     config: AppConfig | None = None,
@@ -259,6 +277,7 @@ def generate_grounded_answer(
     )
     max_attempts = max(1, answer_config.max_attempts)
     last_error: Exception | None = None
+    last_error_detail = ""
     attempts_made = 0
     for attempt in range(1, max_attempts + 1):
         attempts_made = attempt
@@ -269,13 +288,15 @@ def generate_grounded_answer(
             return validate_answer_payload(payload, context, config, attempt_count=attempt)
         except Exception as exc:
             last_error = exc
+            if isinstance(exc, urllib.error.HTTPError):
+                last_error_detail = describe_http_error(exc)
             if attempt >= max_attempts or not retryable_generation_error(exc):
                 break
             time.sleep(retry_delay_seconds(exc, attempt, config))
 
     error_name = type(last_error).__name__ if last_error else "UnknownError"
     if isinstance(last_error, urllib.error.HTTPError):
-        error_name = f"HTTPError {last_error.code}"
+        error_name = last_error_detail or f"HTTPError {last_error.code}"
     return fallback_answer(
         context,
         f"Grounded answer generation failed after {attempts_made} attempt(s): {error_name}",

@@ -76,6 +76,7 @@ class RetrievalConfig:
     context_top_k: int = 12
     context_max_items: int = 6
     context_min_score: float = 0.52
+    context_semantic_min_score: float = 0.84
     context_relative_margin: float = 0.12
     max_hops: int = 1
     semantic_seed_threshold: float = 0.72
@@ -158,6 +159,10 @@ def load_config() -> AppConfig:
             context_top_k=_env_int("AHD_CONTEXT_TOP_K", 12),
             context_max_items=_env_int("AHD_CONTEXT_MAX_ITEMS", 6),
             context_min_score=_env_float("AHD_CONTEXT_MIN_SCORE", 0.52),
+            context_semantic_min_score=_env_float(
+                "AHD_CONTEXT_SEMANTIC_MIN_SCORE",
+                0.84,
+            ),
             context_relative_margin=_env_float("AHD_CONTEXT_RELATIVE_MARGIN", 0.12),
             max_hops=_env_int("AHD_MAX_HOPS", 1),
             semantic_seed_threshold=_env_float("AHD_SEMANTIC_SEED_THRESHOLD", 0.72),
