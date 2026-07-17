@@ -1,0 +1,35 @@
+{
+  "graph_version": "final_v1",
+  "status": "frozen",
+  "frozen_at": "2026-07-11",
+  "counts": {
+    "entities": 2175,
+    "entity_mentions": 5767,
+    "relation_decisions": 3392,
+    "direct_relations": 1404,
+    "bidirectional_relations": 2808,
+    "qa_records_for_import": 2549
+  },
+  "files": {
+    "entities.csv": {
+      "bytes": 285102,
+      "sha256": "9205FD9C249A3BA1ADCC2346F519FCA057CCB6F55188E9BC9DABEC1F36715646"
+    },
+    "entity_mentions.csv": {
+      "bytes": 1685046,
+      "sha256": "346BA0020511CF08AF60F5DB7E4797FB37BF4E8448BF637FC212E612A6CCC44E"
+    },
+    "relation_decisions.csv": {
+      "bytes": 1332142,
+      "sha256": "7F2BC33A4BEBBC8E7CBF193C9FA7509027A7CDE37E3B5CB63F6AD3689621D76B"
+    },
+    "relations.csv": {
+      "bytes": 531044,
+      "sha256": "679D513F3A1FF3B2EF1B9A684223E952BD3E7D7C839289D0AECAAB4DB3BADACB"
+    },
+    "relations_bidirectional.csv": {
+      "bytes": 1274048,
+      "sha256": "51567D4F82D245266D0477F7BA98B2B1AAAC68314CF48A3756EE61E857F40FDA"
+    }
+  }
+}

@@ -1,8 +1,8 @@
 .env
 .env.*
 !.env.example
-.venv-step6/
-.deps-step6/
+.venv/
+.venv-local/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
@@ -11,6 +11,7 @@ __pycache__/
 AHD.csv
 AHD_english.csv
 Distribution of Question and Answer per category.csv
+data/
 
 # Temporary request files are deleted after successful processing.
 outputs/**/**/*requests*.jsonl
@@ -19,8 +20,10 @@ outputs/**/**/*requests*.jsonl
 .agents/
 .sixth/
 .git_empty_backup/
+archive/_obsolete_pending_deletion/
+.codex/
+docs/
+neo4j_dump/
 
 # Exploration notebooks
 *.ipynb
-
-outputs/entities/entity_extraction_raw.jsonl
