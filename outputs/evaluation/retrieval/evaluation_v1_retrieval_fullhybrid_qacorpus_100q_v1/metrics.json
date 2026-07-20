@@ -1,0 +1,29 @@
+{
+  "full_hybrid": {
+    "entities": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "evidence": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "qa": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "relations": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 100,
+      "average_latency_ms": {
+        "end_to_end": 1529.9986,
+        "retrieval_mode": 1529.9665,
+        "step08_shared_query_processing": 0.0321
+      }
+    }
+  }
+}

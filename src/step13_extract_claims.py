@@ -17,6 +17,24 @@ NON_FACTUAL_LIMITATION_MARKERS = (
     "يُنصح باستشارة طبيب",
     "ينصح باستشارة طبيب",
 )
+META_EVIDENCE_MARKERS = (
+    "في الأدلة", "في البيانات", "في المعلومات", "في المصادر", "في المواد",
+    "الأدلة المقدمة", "الأدلة المرفقة", "الأدلة المتاحة", "المعلومات المتوفرة",
+    "المعلومات المقدمة", "المعلومات المرفقة", "المصادر المرفقة", "بناء على الأدلة",
+)
+INSUFFICIENCY_MARKERS = (
+    "لا توجد أدلة", "لا توجد معلومات", "لا توجد بيانات", "لا يوجد دليل",
+    "لا يمكن تحديد", "لا يمكننا تأكيد", "لا يمكن تأكيد", "غير كافية", "غير كافي",
+)
+
+
+def is_non_factual_limitation(text: str) -> bool:
+    if any(marker in text for marker in NON_FACTUAL_LIMITATION_MARKERS):
+        return True
+    return bool(
+        any(marker in text for marker in INSUFFICIENCY_MARKERS)
+        and any(marker in text for marker in META_EVIDENCE_MARKERS)
+    )
 
 
 def split_atomic_claim(claim: AnswerClaim) -> list[AnswerClaim]:
@@ -42,7 +60,10 @@ def extract_claims(answer: GeneratedAnswer) -> list[AnswerClaim]:
         seen: set[str] = set()
         for claim in answer.claims:
             for atomic_claim in split_atomic_claim(claim):
-                if atomic_claim.claim not in seen:
+                if (
+                    atomic_claim.claim not in seen
+                    and not is_non_factual_limitation(atomic_claim.claim)
+                ):
                     claims.append(atomic_claim)
                     seen.add(atomic_claim.claim)
         return claims
@@ -55,7 +76,7 @@ def extract_claims(answer: GeneratedAnswer) -> list[AnswerClaim]:
         raw_text = " ".join(sentence.removeprefix("-").split())
         if len(raw_text.split()) < 3:
             continue
-        if any(marker in raw_text for marker in NON_FACTUAL_LIMITATION_MARKERS):
+        if is_non_factual_limitation(raw_text):
             continue
         citations = list(dict.fromkeys(EVIDENCE_ID_RE.findall(raw_text)))
         claim_text = " ".join(CITATION_BLOCK_RE.sub("", raw_text).split())

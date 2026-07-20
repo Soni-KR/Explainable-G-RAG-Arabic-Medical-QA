@@ -43,6 +43,37 @@ def has_strong_semantic_support(item: RetrievedEvidence, config: AppConfig) -> b
     )
 
 
+def has_direct_question_anchor(item: RetrievedEvidence) -> bool:
+    """Allow exact/near-exact AHD questions without trusting cosine alone."""
+    return bool(
+        item.metadata.get("direct_question_anchor")
+        and float(item.metadata.get("original_question_relevance") or 0.0) >= 0.85
+        and float(item.metadata.get("vector_similarity") or 0.0) >= 0.90
+        and not item.metadata.get("anatomy_mismatch")
+    )
+
+
+def has_strong_direct_qa_support(item: RetrievedEvidence) -> bool:
+    """Admit a trusted direct QA only when its medical identity is explicit."""
+    if item.source_quality not in {
+        "ahd_heldout_safe_corpus",
+        "preprocessed_id",
+        "preprocessed_source_row",
+    }:
+        return False
+    if item.metadata.get("anatomy_mismatch"):
+        return False
+    answer_relevance = float(item.metadata.get("answer_relevance") or 0.0)
+    question_relevance = float(item.metadata.get("question_relevance") or 0.0)
+    entity_identity = float(item.metadata.get("entity_identity") or 0.0)
+    phrase_coverage = float(item.metadata.get("medical_phrase_coverage") or 0.0)
+    return bool(
+        answer_relevance >= 0.45
+        and question_relevance >= 0.30
+        and (phrase_coverage >= 0.99 or entity_identity >= 0.80)
+    )
+
+
 def select_context_evidence(
     subgraph: RerankedSubgraph,
     query: str,
@@ -69,11 +100,17 @@ def select_context_evidence(
             item
             for item in subgraph.evidence
             if item_answer_relevance(item, query) >= answer_relevance_floor
-            and float(item.metadata.get("entity_identity") or 0.0) >= entity_identity_floor
+            and (
+                float(item.metadata.get("entity_identity") or 0.0) >= entity_identity_floor
+                or has_direct_question_anchor(item)
+                or has_strong_direct_qa_support(item)
+            )
             and not (
                 subgraph.primary_intent in INTENTS_REQUIRING_DIRECT_SUPPORT
                 and float(item.metadata.get("intent_support") or 0.0) <= 0.0
                 and not item.relation_ids
+                and not has_direct_question_anchor(item)
+                and not has_strong_direct_qa_support(item)
             )
         ),
         key=lambda item: item.score,
@@ -90,14 +127,26 @@ def select_context_evidence(
     per_qa: dict[str, int] = defaultdict(int)
     for item in ranked:
         strong_semantic_support = has_strong_semantic_support(item, config)
-        if item.score < score_floor and not strong_semantic_support:
+        direct_question_anchor = has_direct_question_anchor(item)
+        strong_direct_qa_support = has_strong_direct_qa_support(item)
+        if (
+            item.score < score_floor
+            and not strong_semantic_support
+            and not direct_question_anchor
+            and not strong_direct_qa_support
+        ):
             continue
         question_match = lexical_overlap(query, item.question)
         passage_match = lexical_overlap(query, f"{item.text} {item.answer}")
         answer_relevance = item_answer_relevance(item, query)
         if answer_relevance < answer_relevance_floor:
             continue
-        if max(question_match, passage_match) < 0.05 and not strong_semantic_support:
+        if (
+            max(question_match, passage_match) < 0.05
+            and not strong_semantic_support
+            and not direct_question_anchor
+            and not strong_direct_qa_support
+        ):
             continue
         qa_key = item.qa_id or item.source_id
         if qa_key and per_qa[qa_key] >= 2:
@@ -124,6 +173,7 @@ def select_context_evidence(
                 and not (
                     subgraph.primary_intent in INTENTS_REQUIRING_DIRECT_SUPPORT
                     and float(item.metadata.get("intent_support") or 0.0) <= 0.0
+                    and not has_direct_question_anchor(item)
                 )
             ):
                 selected.append(item)
@@ -193,6 +243,12 @@ def build_evidence_context(
                 "entity_identity": evidence.metadata.get("entity_identity", 0.0),
                 "intent_support": evidence.metadata.get("intent_support", 0.0),
                 "vector_similarity": evidence.metadata.get("vector_similarity", 0.0),
+                "original_question_relevance": evidence.metadata.get(
+                    "original_question_relevance", 0.0
+                ),
+                "direct_question_anchor": evidence.metadata.get(
+                    "direct_question_anchor", False
+                ),
                 "relation_ids": relation_ids,
             }
         )

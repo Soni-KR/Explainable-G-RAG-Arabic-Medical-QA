@@ -401,15 +401,20 @@ def build_record(
     raw: dict[str, Any],
     warnings: list[str],
     generation_status: str,
+    answerability: str = "",
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     status_by_claim = {item.claim.claim: item.status for item in verifications}
     output_statuses = [status_by_claim.get(claim.claim, "unsupported") for claim in output_claims]
     generation_succeeded = generation_status == "generated"
+    substantive_output = generation_succeeded and answerability not in {
+        "insufficient_evidence",
+        "generation_unavailable",
+    }
     metrics = {
         "bertscore": (
             bertscore_f1(answer, gold.reference_answer)
-            if generation_succeeded
-            else unavailable("BERTScore is not computed for an API fallback answer.")
+            if substantive_output
+            else unavailable("BERTScore is not computed for a fallback or insufficient-evidence answer.")
         ),
         "claim_grounding": (
             output_claim_metrics(output_statuses)
@@ -423,8 +428,8 @@ def build_record(
         ),
         "citation_validity": (
             citation_validity(output_claims, context.allowed_evidence_ids)
-            if generation_succeeded
-            else unavailable("Citation validity is not computed for an API fallback answer.")
+            if substantive_output and output_claims
+            else unavailable("Citation validity requires a substantive answer with factual claims.")
         ),
         "latency": {
             "status": "computed",
@@ -441,6 +446,7 @@ def build_record(
         "query_group": gold.query_group,
         "mode": mode,
         "generation_status": generation_status,
+        "answerability": answerability,
         "gold": gold.to_dict(),
         "answer": answer,
         "output_claims": [asdict(item) for item in output_claims],
@@ -454,6 +460,7 @@ def build_record(
         "query_id": gold.query_id,
         "mode": mode,
         "generation_status": generation_status,
+        "answerability": answerability,
         "allowed_evidence_ids": context.allowed_evidence_ids,
         "allowed_qa_ids": context.allowed_qa_ids,
         "verifications": [asdict(item) for item in verifications],
@@ -512,6 +519,104 @@ def aggregate_mode(records: list[dict[str, Any]]) -> dict[str, Any]:
         "citation_validity": citation,
         "efficiency": efficiency_metrics([record["timings_ms"] for record in records]),
     }
+
+
+def run_offline_reaudit(
+    *,
+    gold_queries: list[Any],
+    source_directory: Path,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Rerun Steps 13-16 from saved generation/context data without API calls."""
+    records_path = source_directory / "full_pipeline.jsonl"
+    manifest_path = source_directory / "manifest.json"
+    if not records_path.exists() or not manifest_path.exists():
+        raise FileNotFoundError(
+            "Re-audit source must contain full_pipeline.jsonl and manifest.json."
+        )
+    source_manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+    source_records = {str(row.get("query_id") or ""): row for row in read_jsonl(records_path)}
+    missing = [gold.query_id for gold in gold_queries if gold.query_id not in source_records]
+    if missing:
+        raise ValueError(f"Re-audit source is missing {len(missing)} requested query IDs.")
+
+    records: list[dict[str, Any]] = []
+    audits: list[dict[str, Any]] = []
+    for index, gold in enumerate(gold_queries, start=1):
+        source = source_records[gold.query_id]
+        raw = dict(source.get("raw") or {})
+        context_payload = raw.get("context")
+        generated_payload = raw.get("generated")
+        if not isinstance(context_payload, dict) or not isinstance(generated_payload, dict):
+            raise ValueError(f"Re-audit source lacks context/generated data for {gold.query_id}.")
+        context = EvidenceContextBundle(**context_payload)
+        generated = generated_from_dict(generated_payload)
+
+        started = perf_counter()
+        claims = extract_claims(generated)
+        claim_ms = round((perf_counter() - started) * 1000.0, 3)
+        started = perf_counter()
+        verifications = verify_claims(claims, context)
+        verification_ms = round((perf_counter() - started) * 1000.0, 3)
+        started = perf_counter()
+        mitigated = mitigate_hallucinations(generated, verifications)
+        mitigation_ms = round((perf_counter() - started) * 1000.0, 3)
+        started = perf_counter()
+        reliability = score_reliability(mitigated, verifications, context)
+        reliability_ms = round((perf_counter() - started) * 1000.0, 3)
+
+        timings = dict(source.get("timings_ms") or {})
+        replaced_stages = {
+            "step13_claim_extraction": claim_ms,
+            "step14_claim_verification": verification_ms,
+            "step15_hallucination_mitigation": mitigation_ms,
+            "step16_reliability_scoring": reliability_ms,
+        }
+        old_postprocessing = sum(float(timings.get(key) or 0.0) for key in replaced_stages)
+        new_postprocessing = sum(replaced_stages.values())
+        timings.update(replaced_stages)
+        timings["end_to_end"] = round(
+            max(0.0, float(timings.get("end_to_end") or 0.0) - old_postprocessing)
+            + new_postprocessing,
+            3,
+        )
+        updated_raw = {
+            **raw,
+            "claims": [asdict(item) for item in claims],
+            "verifications": [asdict(item) for item in verifications],
+            "mitigated": asdict(mitigated),
+            "reliability": asdict(reliability),
+            "reaudit_source": str(records_path),
+            "reaudited_steps": [13, 14, 15, 16],
+        }
+        record, audit = build_record(
+            gold=gold,
+            mode="full_pipeline",
+            answer=mitigated.answer,
+            output_claims=mitigated.kept_claims,
+            verifications=verifications,
+            context=context,
+            timings=timings,
+            raw=updated_raw,
+            warnings=list(source.get("warnings") or []),
+            generation_status=generated.generation_status,
+            answerability=mitigated.answerability,
+        )
+        records.append(record)
+        audits.append(audit)
+        print(
+            json.dumps(
+                {
+                    "progress": f"{index}/{len(gold_queries)}",
+                    "query_id": gold.query_id,
+                    "generation_status": generated.generation_status,
+                    "answerability": mitigated.answerability,
+                    "kept_claims": len(mitigated.kept_claims),
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+    return records, audits, source_manifest
 
 
 def run_resumable_frozen_generation(
@@ -783,6 +888,7 @@ def run_resumable_frozen_generation(
             },
             warnings=[*analysis.warnings, *subgraph.warnings, *generated.warnings],
             generation_status=generated.generation_status,
+            answerability=mitigated.answerability,
         )
         append_jsonl(records_path, record)
         append_jsonl(audits_path, audit)
@@ -817,6 +923,11 @@ def main() -> int:
         "--reuse-retrieval-run",
         type=Path,
         help="Reuse a completed full_hybrid.jsonl; Steps 9-10 are not rerun.",
+    )
+    parser.add_argument(
+        "--reaudit-generation-run",
+        type=Path,
+        help="Reuse a completed generation directory and rerun only Steps 13-16 offline.",
     )
     parser.add_argument(
         "--step08-source-run",
@@ -856,6 +967,71 @@ def main() -> int:
     run_id = args.run_id or make_run_id("generation")
     ensure_run_available(GENERATION_OUTPUT_ROOT, run_id)
     ensure_run_available(CLAIM_AUDIT_OUTPUT_ROOT, run_id)
+    if args.reaudit_generation_run:
+        if args.reuse_retrieval_run:
+            raise ValueError("Choose either --reaudit-generation-run or --reuse-retrieval-run.")
+        if modes != ["full_pipeline"]:
+            raise ValueError("Offline re-audit supports only --mode full_pipeline.")
+        source_directory = args.reaudit_generation_run.resolve()
+        records, audits, source_manifest = run_offline_reaudit(
+            gold_queries=gold_queries,
+            source_directory=source_directory,
+        )
+        graph_counts = dict(source_manifest.get("graph", {}).get("counts") or {})
+        aggregate = {"full_pipeline": aggregate_mode(records)}
+        manifest = build_manifest(
+            run_id=run_id,
+            run_type="generation_offline_reaudit",
+            modes=modes,
+            gold_path=gold_path,
+            gold_count=len(gold_queries),
+            config=config,
+            graph_counts=graph_counts,
+            arguments={
+                key: (
+                    [str(item) for item in value]
+                    if isinstance(value, list)
+                    else str(value)
+                    if isinstance(value, Path)
+                    else value
+                )
+                for key, value in vars(args).items()
+            },
+        )
+        manifest["reaudit"] = {
+            "source_run_id": source_manifest.get("run_id", source_directory.name),
+            "source_directory": str(source_directory),
+            "source_records_sha256": hashlib.sha256(
+                (source_directory / "full_pipeline.jsonl").read_bytes()
+            ).hexdigest(),
+            "steps_rerun": [13, 14, 15, 16],
+            "api_calls": 0,
+            "retrieval_rerun": False,
+            "generation_rerun": False,
+        }
+        run_directory = create_run_directory(GENERATION_OUTPUT_ROOT, run_id)
+        audit_directory = create_run_directory(CLAIM_AUDIT_OUTPUT_ROOT, run_id)
+        write_jsonl(run_directory / "full_pipeline.jsonl", records)
+        write_jsonl(audit_directory / "full_pipeline.jsonl", audits)
+        write_json(run_directory / "metrics.json", aggregate)
+        write_json(run_directory / "manifest.json", manifest)
+        write_json(audit_directory / "manifest.json", manifest)
+        print(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "run_id": run_id,
+                    "generation_output": str(run_directory),
+                    "claim_audit_output": str(audit_directory),
+                    "queries": len(gold_queries),
+                    "api_calls": 0,
+                    "steps_rerun": [13, 14, 15, 16],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
     if args.reuse_retrieval_run:
         if modes != ["full_pipeline"]:
             raise ValueError("Frozen retrieval reuse currently supports only --mode full_pipeline.")
@@ -964,6 +1140,11 @@ def main() -> int:
                         raw={"generated": asdict(generated)},
                         warnings=generated.warnings,
                         generation_status=generated.generation_status,
+                        answerability=(
+                            "generation_unavailable"
+                            if generated.generation_status != "generated"
+                            else "answerable"
+                        ),
                     )
                 else:
                     assert artifacts is not None
@@ -1021,6 +1202,12 @@ def main() -> int:
                             *generated.warnings,
                         ],
                         generation_status=generated.generation_status,
+                        answerability=(
+                            "answerable"
+                            if mode == "rag_before_mitigation"
+                            and generated.generation_status == "generated"
+                            else artifacts["mitigated"].answerability
+                        ),
                     )
                 records_by_mode[mode].append(record)
                 audits_by_mode[mode].append(audit)

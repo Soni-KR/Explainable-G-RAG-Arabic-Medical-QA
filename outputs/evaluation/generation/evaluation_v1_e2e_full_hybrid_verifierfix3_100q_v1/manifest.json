@@ -1,0 +1,141 @@
+{
+  "evaluation_version": "evaluation-v1",
+  "run_id": "evaluation_v1_e2e_full_hybrid_verifierfix3_100q_v1",
+  "run_type": "generation_offline_reaudit",
+  "created_at_utc": "2026-07-18T20:58:35.502312+00:00",
+  "modes": [
+    "full_pipeline"
+  ],
+  "supplemental_graph_used": false,
+  "gold": {
+    "path": "data/evaluation/retrieval_gold_annotations_100.csv",
+    "sha256": "e9df2601734545a3d31cd3dacbbac5550d18214f42d651e0193122dd6647b945",
+    "query_count": 100,
+    "label_source": "human_confirmed_rows_only; provisional dataset labels are excluded"
+  },
+  "graph": {
+    "graph_version": "final_v1",
+    "counts": {
+      "MedicalEntity": 2175,
+      "EvidenceMention": 5767,
+      "QARecord": 2549,
+      "MEDICAL_RELATION": 2808,
+      "MENTIONED_IN": 5767,
+      "EVIDENCE_FROM": 5767
+    },
+    "read_only": true
+  },
+  "models": {
+    "query_analysis_provider": "groq",
+    "query_analysis_model": "openai/gpt-oss-20b",
+    "answer_provider": "groq",
+    "answer_model": "openai/gpt-oss-20b",
+    "embedding_model": "intfloat/multilingual-e5-base",
+    "embedding_dimension": 768,
+    "query_prompt_version": "query_analysis_v1",
+    "answer_prompt_version": "grounded_answer_v2",
+    "query_reasoning_effort": "low",
+    "answer_reasoning_effort": "low",
+    "query_temperature": 0.0,
+    "answer_temperature": 0.0
+  },
+  "neo4j": {
+    "uri": "bolt://localhost:7688",
+    "database": "neo4j",
+    "credentials_recorded": false
+  },
+  "thresholds": {
+    "semantic_seed_threshold": 0.72,
+    "claim_support_threshold": 0.55,
+    "claim_weak_threshold": 0.35
+  },
+  "top_k": {
+    "entity": 10,
+    "evidence": 10,
+    "qa": 5,
+    "relation": 30,
+    "context": 12,
+    "max_hops": 1
+  },
+  "retrieval_weights": {
+    "semantic": 0.45,
+    "graph": 0.35,
+    "evidence": 0.2
+  },
+  "vector_indexes": {
+    "entity": "final_medical_entity_vector_index",
+    "evidence": "final_evidence_mention_vector_index",
+    "qa": "final_qa_record_vector_index"
+  },
+  "git": {
+    "commit": "2c15a193fdf5f1e0fda4e45c878a6eecade6a5b1",
+    "dirty": true
+  },
+  "runtime": {
+    "python": "3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]",
+    "executable": "C:\\Users\\mega0\\.venvs\\ahd-graphrag\\Scripts\\python.exe",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+      "neo4j": "6.2.0",
+      "numpy": "2.5.1",
+      "sentence-transformers": "3.3.1",
+      "torch": "2.13.0",
+      "bert-score": "0.3.13",
+      "ragas": "not_installed"
+    },
+    "arguments": {
+      "gold_file": "data\\evaluation\\retrieval_gold_annotations_100.csv",
+      "mode": [
+        "full_pipeline"
+      ],
+      "limit": 0,
+      "run_id": "evaluation_v1_e2e_full_hybrid_verifierfix3_100q_v1",
+      "reuse_retrieval_run": null,
+      "reaudit_generation_run": "outputs\\evaluation\\generation\\evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1",
+      "step08_source_run": [],
+      "resume": false,
+      "rerank_frozen_retrieval": false,
+      "allow_live_step08": false,
+      "request_interval_seconds": 8.0,
+      "max_rate_limit_retries": 6,
+      "rate_limit_backoff_seconds": 30.0,
+      "dry_run": false
+    }
+  },
+  "frozen_runtime_sha256": {
+    "scripts/evaluation_common.py": "6243f71a2f00e3b6395dcb9d35e39d98d3abb2d8d69df1be0a0189605f7db9b9",
+    "scripts/run_retrieval_ablation.py": "f4aed9a0bbe0cfafa83d144f5926b79be64cf4c023c4e25c91f55bd9aa79cb94",
+    "scripts/run_generation_ablation.py": "f30374c978779c43dfdca4aca519100f945ce8a64399ac4cacbcfc2d330aadd6",
+    "src/config.py": "f1a75eeff2cd0359750a17f3d8605d6aebb31fc03f79987b77b9e754b3941cab",
+    "src/models.py": "48182142e3ae40da37521d23bfbdc4256e714799ca58943d19747b42c7763121",
+    "src/neo4j_repository.py": "1478c6a8e1f68105637ae0b082871e14a5910e401c6381e21bf7cf27f1a116d7",
+    "src/step08a_normalize_query.py": "cf1923fc4da9ee545e8c2d1cd88616ad58cbceec5f4a8e8fdf1fe9762b03b172",
+    "src/step08b_analyze_query.py": "9b7ab921628e36759b55c26135faa6443c2bf1fff5834322bae55cd508e0e0ad",
+    "src/step08c_link_entities.py": "730e73a7fa6d0d76bdc198b5ea8525a534587f57c8d403872d7bfffcd51af779",
+    "src/step08d_plan_retrieval.py": "cbd1aee44c496919f31bb5796d2dec3d132c75a14a4236fae614d5127ed506cf",
+    "src/step09_hybrid_retrieval.py": "92363b239e432938c5240435586cea6db904f6570de9f063237d08ffd3fd58d5",
+    "src/step10_rerank_subgraph.py": "ef47741c57181e4a81b108dad082980f88a06e0072fd3693edc404fc6ba2d160",
+    "src/step11_build_evidence_context.py": "351183e525884c109e91f4910e30f375a35df33000e2997fb116105327ad282f",
+    "src/step12_generate_grounded_answer.py": "bb29a9a80c5fa4851b0c9aadbfdf0970a5a0ccc6a90489faa04c40db568bdfcd",
+    "src/step13_extract_claims.py": "e3de8deb79c535077f641f61b158d7e68f6e03654eeaec935b5dfc56364de785",
+    "src/step14_verify_claims.py": "f8c2779826af93e82c3ffcc3aa02195ab27d52690b2781f435daf5152db07420",
+    "src/step15_mitigate_hallucinations.py": "a5e201c8f015410f7be62ba34c1307282916a1b1ca23ec9d746ac5b48094e3a4",
+    "src/step16_score_reliability.py": "49870a0fe4ef8e4a79189e1ec73e79609395b22900bc7dceb19ed717bd1133b2",
+    "src/step17_build_explainable_output.py": "f7e74cefe32d2062b8ce24cc31dd30e74b0cbd5a3da594f6dff656e96669f9e0",
+    "src/evaluation_metrics.py": "cb0e75cb237139461c34512986b17f71eb13720dafa5316ac1f4b64a3ec35244"
+  },
+  "reaudit": {
+    "source_run_id": "evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1",
+    "source_directory": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\generation\\evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1",
+    "source_records_sha256": "a7d3cc10380419f387fcf172de209769c983ae4c39941d55f581cbd173f1389f",
+    "steps_rerun": [
+      13,
+      14,
+      15,
+      16
+    ],
+    "api_calls": 0,
+    "retrieval_rerun": false,
+    "generation_rerun": false
+  }
+}

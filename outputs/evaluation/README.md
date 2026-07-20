@@ -14,24 +14,26 @@ Only results that still explain the current `final_v1` pipeline are active here.
 - `generation/pilot_15q`: last completed valid 15-question GPT-OSS-20B run.
 - `claim_audit/pilot_15q`: matching atomic claim verification output.
 - `qualitative/pilot_15q_steps08_12.md`: readable question-by-question inspection.
-
-## Resumable 100-Question Run
-
-`cache/evaluation_v1_generation_verifierfix_100q_resumed_20260717` is append-only
-checkpoint state. It currently contains 12 completed records, five successful Step
-12 responses, and 12 audits. Do not rename it: the runner locates the cache by run
-ID. On completion, the runner will create matching `generation/` and `claim_audit/`
-directories without rerunning frozen retrieval.
+- `generation/evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1`: completed live
+  100-question full-hybrid run; 74 Step 12 generations and 26 evidence fallbacks.
+- `claim_audit/evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1`: matching original
+  verifier output.
+- `generation/evaluation_v1_e2e_full_hybrid_verifierfix3_100q_v1`: authoritative
+  zero-API Steps 13-16 re-audit of the same saved answers and contexts.
+- `claim_audit/evaluation_v1_e2e_full_hybrid_verifierfix3_100q_v1`: matching final
+  claim audit.
 
 ## End-to-End Retrieval Ablation
 
 - `evaluation_v1_e2e_lexical_only_100q_v2` completed under the pre-semantic-fix
   context selector: 9 generated answers and 91 insufficient-evidence fallbacks.
-- `evaluation_v1_e2e_vector_only_100q_v1` stopped after 13 questions and belongs to
-  the same pre-fix pipeline. Do not resume it into a post-fix comparison.
-- The post-fix offline check reranks the frozen raw hybrid candidates and retains
-  context for 74/100 questions, compared with 31/100 in the saved pre-fix full
-  hybrid output. A new run ID is required for post-fix generation.
+- The corrected full-hybrid run completed all 100 questions. Step 12 generated for
+  74; the final verifier retained 31 claims across 18 substantive answers.
+- BERTScore F1 is `0.673289` over the 18 substantive answers only. Automatic claim
+  support and citation validity are `1.0` after mitigation and must not be reported
+  as human medical-accuracy scores.
+- Vector-only, graph-only, and hybrid-without-reranking generation remain incomplete.
+  New comparable runs must use the same frozen inputs and current pipeline version.
 
 The reviewed supplemental sidecar is not a remedy for this coverage issue: only
 four relations passed its acceptance gates, it activated for 0/35 clean evaluation

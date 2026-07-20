@@ -300,6 +300,14 @@ def build_manifest(
             "evidence": config.embeddings.evidence_vector_index_name,
             "qa": config.embeddings.qa_vector_index_name,
         },
+        "qa_retrieval_corpus": {
+            "enabled": config.qa_corpus.enabled,
+            "index_path": str(config.qa_corpus.index_path),
+            "corpus_version": config.qa_corpus.corpus_version,
+            "lexical_candidate_k": config.qa_corpus.lexical_candidate_k,
+            "semantic_top_k": config.qa_corpus.semantic_top_k,
+            "semantic_rerank_enabled": config.qa_corpus.semantic_rerank_enabled,
+        },
         "git": {
             "commit": git_value("rev-parse", "HEAD"),
             "dirty": bool(dirty_output and dirty_output != "unknown"),

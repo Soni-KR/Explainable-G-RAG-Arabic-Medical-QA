@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -26,8 +26,13 @@ from scripts.evaluation_common import (
 from src.config import AppConfig, load_final_config
 from src.evaluation_metrics import efficiency_metrics, retrieval_metrics
 from src.models import (
+    ExtractedMedicalPhrase,
     HybridRetrievalBundle,
+    LinkedMedicalEntity,
+    QueryEntityLinkingResult,
     RerankedSubgraph,
+    RetrievalPlanResult,
+    UnifiedQueryAnalysisResult,
     VectorSearchResult,
 )
 from src.neo4j_repository import Neo4jRepository
@@ -44,6 +49,7 @@ from src.step09_hybrid_retrieval import (
     token_set,
     vector_results,
 )
+from src.step09a_qa_corpus import search_qa_corpus
 from src.step10_rerank_subgraph import rerank_subgraph
 
 
@@ -213,6 +219,20 @@ def vector_bundle(
 ) -> HybridRetrievalBundle:
     embedding, _ = embed_query(analysis.reformulated_query, config, model=model)
     vectors = vector_results(repository, embedding, config, plan)
+    if config.qa_corpus.enabled:
+        vectors.extend(
+            search_qa_corpus(
+                analysis.original_query,
+                analysis.reformulated_query,
+                embedding,
+                model,
+                config,
+                top_k=max(plan.qa_top_k, config.qa_corpus.semantic_top_k),
+                medical_phrases=[
+                    phrase.normalized_form for phrase in analysis.medical_phrases
+                ],
+            )
+        )
     evidence = collect_evidence([], vectors, config.retrieval.context_top_k * 2)
     return HybridRetrievalBundle(
         query=analysis.original_query,
@@ -245,6 +265,99 @@ def unreranked_subgraph(bundle: HybridRetrievalBundle, config: AppConfig) -> Rer
     )
 
 
+def same_normalized_question(query: str, candidate: str) -> bool:
+    query_norm = normalize_query(query).normalized_query
+    candidate_norm = normalize_query(candidate).normalized_query
+    return bool(query_norm and query_norm == candidate_norm)
+
+
+def remove_evaluation_question_leakage(
+    bundle: HybridRetrievalBundle,
+    original_query: str,
+) -> HybridRetrievalBundle:
+    """Exclude exact held-out questions from evaluation retrieval only."""
+    vectors = [
+        item
+        for item in bundle.vector_results
+        if not same_normalized_question(
+            original_query,
+            str(item.metadata.get("question") or item.title),
+        )
+    ]
+    evidence = [
+        item
+        for item in bundle.evidence
+        if not same_normalized_question(original_query, item.question)
+    ]
+    relations = []
+    removed_relation_evidence = 0
+    for relation in bundle.relations:
+        metadata = dict(relation.metadata)
+        source_items = list(metadata.get("evidence_items") or [])
+        clean_items = [
+            item
+            for item in source_items
+            if not same_normalized_question(original_query, str(item.get("question") or ""))
+        ]
+        removed_relation_evidence += len(source_items) - len(clean_items)
+        if source_items and not clean_items:
+            continue
+        metadata["evidence_items"] = clean_items
+        relations.append(replace(relation, metadata=metadata))
+
+    removed = (
+        len(bundle.vector_results) - len(vectors)
+        + len(bundle.evidence) - len(evidence)
+        + len(bundle.relations) - len(relations)
+        + removed_relation_evidence
+    )
+    warnings = list(bundle.warnings)
+    if removed:
+        warnings.append(
+            f"Evaluation leakage guard removed {removed} exact held-out-question artifacts."
+        )
+    return replace(
+        bundle,
+        vector_results=vectors,
+        relations=relations,
+        evidence=evidence,
+        warnings=list(dict.fromkeys(warnings)),
+    )
+
+
+def analysis_from_dict(payload: dict[str, Any]) -> UnifiedQueryAnalysisResult:
+    values = dict(payload)
+    values["medical_phrases"] = [
+        ExtractedMedicalPhrase(**item) for item in values.get("medical_phrases", [])
+    ]
+    return UnifiedQueryAnalysisResult(**values)
+
+
+def linking_from_dict(payload: dict[str, Any]) -> QueryEntityLinkingResult:
+    values = dict(payload)
+    values["linked_entities"] = [
+        LinkedMedicalEntity(**item) for item in values.get("linked_entities", [])
+    ]
+    return QueryEntityLinkingResult(**values)
+
+
+def load_step08_cache(path: Path | None) -> dict[str, dict[str, Any]]:
+    if path is None:
+        return {}
+    if not path.exists():
+        raise FileNotFoundError(f"Step 8 reuse file does not exist: {path}")
+    cache: dict[str, dict[str, Any]] = {}
+    with path.open("r", encoding="utf-8-sig") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            query_id = str(row.get("query_id") or "")
+            if query_id:
+                cache[query_id] = row
+    return cache
+
+
 def run_mode(
     mode: str,
     analysis: Any,
@@ -254,15 +367,19 @@ def run_mode(
     config: AppConfig,
     model: Any | None,
     corpus: dict[str, list[dict[str, Any]]] | None,
+    evaluation_query: str,
 ) -> tuple[HybridRetrievalBundle, RerankedSubgraph]:
     if mode == "lexical_only":
         bundle = lexical_bundle(analysis, plan, corpus or {}, config)
+        bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
         return bundle, unreranked_subgraph(bundle, config)
     if mode == "vector_only":
         bundle = vector_bundle(analysis, plan, repository, config, model)
+        bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
         return bundle, unreranked_subgraph(bundle, config)
     if mode == "graph_only":
         bundle = graph_bundle(analysis, linking, plan, repository, config)
+        bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
         return bundle, unreranked_subgraph(bundle, config)
 
     bundle = retrieve_hybrid(
@@ -273,6 +390,7 @@ def run_mode(
         config=config,
         model=model,
     )
+    bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
     if mode == "hybrid_without_reranking":
         return bundle, unreranked_subgraph(bundle, config)
     return bundle, rerank_subgraph(bundle, config=config)
@@ -334,6 +452,12 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--run-id", default="")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--reuse-step08-from",
+        type=Path,
+        default=None,
+        help="Reuse query analysis/linking/planning from a previous retrieval JSONL.",
+    )
     args = parser.parse_args()
     modes = args.mode or list(MODES)
     gold_path = args.gold_file.resolve()
@@ -346,6 +470,7 @@ def main() -> int:
         return 0
     if not gold_queries:
         raise RuntimeError("The gold template has no annotated query rows.")
+    step08_cache = load_step08_cache(args.reuse_step08_from)
 
     run_id = args.run_id or make_run_id("retrieval")
     ensure_run_available(RETRIEVAL_OUTPUT_ROOT, run_id)
@@ -360,13 +485,33 @@ def main() -> int:
         corpus = load_lexical_corpus(repository) if "lexical_only" in modes else None
         for gold in gold_queries:
             analysis_started = perf_counter()
-            analysis, linking = analyze_and_link_query(gold.query, repository=repository, config=config)
-            plan = build_retrieval_plan(analysis, linking, config=config)
+            cached = step08_cache.get(gold.query_id)
+            if cached is not None:
+                analysis = analysis_from_dict(dict(cached.get("query_analysis") or {}))
+                linking = linking_from_dict(dict(cached.get("entity_linking") or {}))
+                plan = RetrievalPlanResult(**dict(cached.get("retrieval_plan") or {}))
+            else:
+                if args.reuse_step08_from is not None:
+                    raise RuntimeError(f"Step 8 reuse payload is missing {gold.query_id}.")
+                analysis, linking = analyze_and_link_query(
+                    gold.query,
+                    repository=repository,
+                    config=config,
+                )
+                plan = build_retrieval_plan(analysis, linking, config=config)
             analysis_ms = round((perf_counter() - analysis_started) * 1000.0, 3)
             for mode in modes:
                 mode_started = perf_counter()
                 bundle, subgraph = run_mode(
-                    mode, analysis, linking, plan, repository, config, model, corpus
+                    mode,
+                    analysis,
+                    linking,
+                    plan,
+                    repository,
+                    config,
+                    model,
+                    corpus,
+                    gold.query,
                 )
                 retrieval_ms = round((perf_counter() - mode_started) * 1000.0, 3)
                 ranked = rankings(bundle, subgraph)

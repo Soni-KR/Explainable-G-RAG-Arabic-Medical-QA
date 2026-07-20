@@ -50,6 +50,20 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.environ.get(name)
+    if value is None or value == "":
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_project_path(name: str, default: Path) -> str:
+    path = Path(_env(name, str(default))).expanduser()
+    if not path.is_absolute():
+        path = ROOT_DIR / path
+    return str(path.resolve())
+
+
 @dataclass(frozen=True)
 class Neo4jConfig:
     uri: str = "bolt://localhost:7687"
@@ -65,6 +79,18 @@ class EmbeddingConfig:
     entity_vector_index_name: str = "medical_entity_vector_index"
     evidence_vector_index_name: str = "evidence_mention_vector_index"
     qa_vector_index_name: str = "qa_record_vector_index"
+
+
+@dataclass(frozen=True)
+class QACorpusConfig:
+    """External AHD QA retrieval corpus used beside the frozen graph."""
+
+    enabled: bool = True
+    index_path: str = str(ROOT_DIR / "data" / "retrieval" / "ahd_qa_train_v1.sqlite")
+    corpus_version: str = "ahd_qa_train_v1"
+    lexical_candidate_k: int = 80
+    semantic_top_k: int = 8
+    semantic_rerank_enabled: bool = False
 
 
 @dataclass(frozen=True)
@@ -113,6 +139,7 @@ class AppConfig:
     graph_version: str = "final_v1"
     neo4j: Neo4jConfig = field(default_factory=Neo4jConfig)
     embeddings: EmbeddingConfig = field(default_factory=EmbeddingConfig)
+    qa_corpus: QACorpusConfig = field(default_factory=QACorpusConfig)
     retrieval: RetrievalConfig = field(default_factory=RetrievalConfig)
     query_analysis: QueryAnalysisConfig = field(default_factory=QueryAnalysisConfig)
     answer_generation: AnswerGenerationConfig = field(default_factory=AnswerGenerationConfig)
@@ -150,6 +177,17 @@ def load_config() -> AppConfig:
                 "AHD_QA_VECTOR_INDEX",
                 "qa_record_vector_index",
             ),
+        ),
+        qa_corpus=QACorpusConfig(
+            enabled=_env_bool("AHD_QA_CORPUS_ENABLED", True),
+            index_path=_env_project_path(
+                "AHD_QA_CORPUS_INDEX",
+                ROOT_DIR / "data" / "retrieval" / "ahd_qa_train_v1.sqlite",
+            ),
+            corpus_version=_env("AHD_QA_CORPUS_VERSION", "ahd_qa_train_v1"),
+            lexical_candidate_k=_env_int("AHD_QA_LEXICAL_CANDIDATE_K", 80),
+            semantic_top_k=_env_int("AHD_QA_SEMANTIC_TOP_K", 8),
+            semantic_rerank_enabled=_env_bool("AHD_QA_SEMANTIC_RERANK", False),
         ),
         retrieval=RetrievalConfig(
             entity_top_k=_env_int("AHD_ENTITY_TOP_K", 10),
@@ -211,6 +249,7 @@ def load_final_config() -> AppConfig:
             evidence_vector_index_name=_env("FINAL_EVIDENCE_VECTOR_INDEX", "final_evidence_mention_vector_index"),
             qa_vector_index_name=_env("FINAL_QA_VECTOR_INDEX", "final_qa_record_vector_index"),
         ),
+        qa_corpus=base.qa_corpus,
         retrieval=base.retrieval,
         query_analysis=base.query_analysis,
         answer_generation=base.answer_generation,

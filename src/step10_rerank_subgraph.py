@@ -15,6 +15,7 @@ from src.step09_hybrid_retrieval import (
 SOURCE_QUALITY_PRIORS = {
     "preprocessed_id": 1.0,
     "preprocessed_source_row": 0.9,
+    "ahd_heldout_safe_corpus": 0.95,
     "supplemental_dataset_validated": 0.8,
     "mention_evidence": 0.55,
     "": 0.65,
@@ -109,6 +110,7 @@ def rerank_subgraph(
     for item in bundle.evidence:
         original_score = max(0.0, min(1.0, float(item.score or 0.0)))
         question_relevance = lexical_overlap(query, item.question)
+        original_question_relevance = lexical_overlap(bundle.query, item.question)
         passage_relevance = lexical_overlap(query, " ".join([item.text, item.answer]))
         relation_support = 1.0 if selected_relation_ids.intersection(item.relation_ids) else 0.0
         qa_support = 1.0 if item.qa_id and item.qa_id in selected_qa_ids else 0.0
@@ -116,6 +118,7 @@ def rerank_subgraph(
         inferred_vector_candidate = bool(
             not item.relation_ids
             and item.evidence_id.startswith(("qa::", "mention::"))
+            and not item.metadata.get("retrieval_channel")
         )
         vector_similarity = float(
             item.metadata.get("vector_similarity")
@@ -127,6 +130,11 @@ def rerank_subgraph(
             )
         )
         entity_identity = medical_identity_similarity(query, item.question)
+        medical_phrase_coverage = float(
+            item.metadata.get("medical_phrase_coverage") or 0.0
+        )
+        if item.source_quality == "ahd_heldout_safe_corpus":
+            entity_identity = max(entity_identity, medical_phrase_coverage)
         if relation_support:
             entity_identity = max(entity_identity, medical_identity_similarity(query, item.text))
         evidence_intent_support = intent_support(
@@ -153,9 +161,14 @@ def rerank_subgraph(
                 - (0.30 if anatomy_mismatch else 0.0),
             )
         semantic_anchor = max(question_relevance, passage_relevance, entity_identity)
+        direct_question_anchor = bool(
+            original_question_relevance >= 0.85
+            and vector_similarity >= 0.90
+            and not anatomy_mismatch
+        )
         strong_semantic_match = bool(
             vector_similarity >= config.retrieval.context_semantic_min_score
-            and (semantic_anchor >= 0.05 or vector_similarity >= 0.90)
+            and semantic_anchor >= 0.10
         )
         if strong_semantic_match and not anatomy_mismatch:
             semantic_answer_relevance = (
@@ -164,6 +177,13 @@ def rerank_subgraph(
                 + 0.20 * evidence_intent_support
             )
             answer_relevance = max(answer_relevance, semantic_answer_relevance)
+        if direct_question_anchor:
+            answer_relevance = max(
+                answer_relevance,
+                0.55 * original_question_relevance
+                + 0.25 * vector_similarity
+                + 0.20 * max(0.5, evidence_intent_support),
+            )
         if anatomy_mismatch:
             answer_relevance = 0.0
         query_relevance = (
@@ -187,14 +207,17 @@ def rerank_subgraph(
         metadata.update(
             {
                 "question_relevance": round(question_relevance, 6),
+                "original_question_relevance": round(original_question_relevance, 6),
                 "passage_relevance": round(passage_relevance, 6),
                 "entity_identity": round(entity_identity, 6),
+                "medical_phrase_coverage": round(medical_phrase_coverage, 6),
                 "intent_support": round(evidence_intent_support, 6),
                 "anatomy_mismatch": anatomy_mismatch,
                 "retrieval_channel": item.metadata.get("retrieval_channel")
                 or ("vector" if inferred_vector_candidate else "graph"),
                 "vector_similarity": round(vector_similarity, 6),
                 "strong_semantic_match": strong_semantic_match,
+                "direct_question_anchor": direct_question_anchor,
                 "answer_relevance": round(max(0.0, min(1.0, answer_relevance)), 6),
             }
         )

@@ -18,6 +18,7 @@ from src.models import (
 from src.neo4j_repository import Neo4jRepository
 from src.step06_build_embedding_indexes import load_model
 from src.step08a_normalize_query import normalize_query
+from src.step09a_qa_corpus import search_qa_corpus
 
 
 TOKEN_RE = re.compile(r"[\w\u0600-\u06ff]+", re.UNICODE)
@@ -119,7 +120,7 @@ def medical_identity_similarity(left: str, right: str) -> float:
     overlap = left_tokens & right_tokens
     if overlap:
         # Exact overlap with a short entity label remains a strong identity
-        # signal, while one shared word between two long questions does not.
+        # signal, while downstream question matching also checks query overlap.
         return len(overlap) / min(len(left_tokens), len(right_tokens))
     fuzzy_score = max(
         SequenceMatcher(None, left_token, right_token).ratio()
@@ -128,7 +129,10 @@ def medical_identity_similarity(left: str, right: str) -> float:
     )
     # Fuzzy identity exists only to tolerate close spelling variants. Moderate
     # string resemblance between unrelated Arabic words is not entity identity.
-    return fuzzy_score if fuzzy_score >= 0.80 else 0.0
+    # Arabic medical terms with no token overlap need a near-exact spelling
+    # resemblance. The previous 0.80 floor confused unrelated symptoms whose
+    # short words happened to share several characters.
+    return fuzzy_score if fuzzy_score >= 0.90 else 0.0
 
 
 def safe_float(value: Any) -> float:
@@ -385,6 +389,14 @@ def collect_evidence(
 
     for result in vectors:
         if result.document_type == "EvidenceMention":
+            metadata = dict(result.metadata)
+            channel = str(metadata.get("retrieval_channel") or "vector")
+            metadata.update(
+                {
+                    "retrieval_channel": channel,
+                    "vector_similarity": metadata.get("vector_similarity", result.score),
+                }
+            )
             candidates.append(
                 RetrievedEvidence(
                     evidence_id=f"mention::{result.result_id}",
@@ -396,13 +408,18 @@ def collect_evidence(
                     category=str(result.metadata.get("category") or ""),
                     source_quality=str(result.metadata.get("source_quality") or ""),
                     score=result.score,
-                    metadata={
-                        "retrieval_channel": "vector",
-                        "vector_similarity": result.score,
-                    },
+                    metadata=metadata,
                 )
             )
         elif result.document_type == "QARecord":
+            metadata = dict(result.metadata)
+            channel = str(metadata.get("retrieval_channel") or "vector")
+            metadata.update(
+                {
+                    "retrieval_channel": channel,
+                    "vector_similarity": metadata.get("vector_similarity", result.score),
+                }
+            )
             candidates.append(
                 RetrievedEvidence(
                     evidence_id=f"qa::{result.qa_id}",
@@ -414,17 +431,23 @@ def collect_evidence(
                     category=str(result.metadata.get("category") or ""),
                     source_quality=str(result.metadata.get("source_quality") or ""),
                     score=result.score,
-                    metadata={
-                        "retrieval_channel": "vector",
-                        "vector_similarity": result.score,
-                    },
+                    metadata=metadata,
                 )
             )
 
-    best: dict[tuple[str, str], RetrievedEvidence] = {}
+    best: dict[tuple[str, ...], RetrievedEvidence] = {}
     for item in candidates:
         normalized = normalize_query(item.text).normalized_query
-        key = (item.qa_id, normalized)
+        question_norm = normalize_query(item.question).normalized_query
+        answer_norm = normalize_query(item.answer).normalized_query
+        # The same AHD row can exist under ahd5k, ahd10k, and full-corpus IDs.
+        # Deduplicate by normalized content so repeated provenance does not fill
+        # the small Step 11 context budget.
+        key = (
+            ("qa_content", question_norm, answer_norm)
+            if question_norm and answer_norm
+            else ("source", item.qa_id, normalized)
+        )
         current = best.get(key)
         if normalized and (current is None or item.score > current.score):
             best[key] = item
@@ -457,6 +480,23 @@ def retrieve_hybrid(
         if plan.use_vector_search:
             query_vector, model = embed_query(analysis.reformulated_query, config, model=model)
             vectors = vector_results(repository, query_vector, config, plan)
+            if config.qa_corpus.enabled:
+                try:
+                    vectors.extend(
+                        search_qa_corpus(
+                            analysis.original_query,
+                            analysis.reformulated_query,
+                            query_vector,
+                            model,
+                            config,
+                            top_k=max(plan.qa_top_k, config.qa_corpus.semantic_top_k),
+                            medical_phrases=[
+                                phrase.normalized_form for phrase in analysis.medical_phrases
+                            ],
+                        )
+                    )
+                except (OSError, RuntimeError, ValueError) as exc:
+                    warnings.append(f"External QA retrieval was unavailable: {exc}")
 
         seeds = seed_scores(linking, plan, vectors, config, analysis=analysis)
         relation_rows: list[dict[str, Any]] = []
