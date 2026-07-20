@@ -19,6 +19,7 @@ from src.models import (
     VectorSearchResult,
 )
 from src.step09_hybrid_retrieval import anatomy_terms, medical_identity_similarity, score_relations, seed_scores
+from src.step09a_qa_corpus import medical_phrase_matches
 from src.step08b_analyze_query import fallback_result
 from src.step10_rerank_subgraph import rerank_subgraph
 from src.step11_build_evidence_context import build_evidence_context
@@ -63,6 +64,70 @@ def analysis(query: str, entity_type: str = "DiseaseCondition") -> UnifiedQueryA
 
 
 class RetrievalQualityGuardTests(unittest.TestCase):
+    def test_external_qa_phrase_coverage_requires_the_explicit_medical_phrase(self) -> None:
+        unrelated_coverage, _ = medical_phrase_matches(
+            ["الاسهال"],
+            "ما البكتيريا التي تسبب الالتهابات المهبلية؟",
+            "توجد أنواع متعددة من البكتيريا.",
+        )
+        related_coverage, matched = medical_phrase_matches(
+            ["الاسهال"],
+            "ما البكتيريا التي تسبب الإسهال؟",
+            "توجد عدة أنواع من الجراثيم المسببة للإسهال.",
+        )
+        self.assertEqual(unrelated_coverage, 0.0)
+        self.assertEqual(related_coverage, 1.0)
+        self.assertEqual(matched, ["الاسهال"])
+
+    def test_step11_preserves_explicit_phrase_supported_direct_qa(self) -> None:
+        direct_qa = RetrievedEvidence(
+            evidence_id="qa::orthostatic",
+            source_id="orthostatic",
+            qa_id="orthostatic",
+            text="هذا هبوط ضغط انتصابي وله أسباب متعددة.",
+            question="أشعر بالدوار عندما أجلس ثم أنهض.",
+            answer="هذا هبوط ضغط انتصابي وله أسباب متعددة.",
+            source_quality="ahd_heldout_safe_corpus",
+            score=0.50,
+            metadata={
+                "answer_relevance": 0.80,
+                "question_relevance": 0.45,
+                "entity_identity": 0.40,
+                "medical_phrase_coverage": 1.0,
+                "intent_support": 1.0,
+                "anatomy_mismatch": False,
+            },
+        )
+        competing_graph_item = RetrievedEvidence(
+            evidence_id="mention::generic",
+            source_id="generic",
+            qa_id="generic",
+            text="معلومة عامة عن الدوار.",
+            question="الدوار عرض شائع.",
+            answer="توجد أسباب متعددة.",
+            source_quality="mention_evidence",
+            score=0.90,
+            metadata={
+                "answer_relevance": 0.82,
+                "question_relevance": 0.40,
+                "entity_identity": 1.0,
+                "intent_support": 1.0,
+            },
+        )
+        context = build_evidence_context(
+            RerankedSubgraph(
+                query="لماذا نشعر بالدوار عندما نكون جالسين ونقف؟",
+                primary_intent="cause_request",
+                evidence=[competing_graph_item, direct_qa],
+            ),
+            "لماذا نشعر بالدوار عندما نجلس ثم نقف؟",
+            config=AppConfig(),
+        )
+        self.assertIn(
+            "orthostatic",
+            [item["source_id"] for item in context.evidence_items],
+        )
+
     def test_hard_link_prevents_unrelated_semantic_graph_seed(self) -> None:
         vectors = [
             VectorSearchResult(
@@ -172,6 +237,39 @@ class RetrievalQualityGuardTests(unittest.TestCase):
         self.assertEqual(len(context.evidence_items), 1)
         self.assertEqual(context.evidence_items[0]["vector_similarity"], 0.92)
 
+    def test_exact_original_question_survives_a_different_reformulation(self) -> None:
+        original = "هل البخاخ ذو القرص علاجي أم وقائي؟"
+        reformulated = "ما تصنيف هذا الجهاز الدوائي؟"
+        exact = RetrievedEvidence(
+            evidence_id="qa::diskhaler",
+            source_id="diskhaler",
+            qa_id="diskhaler",
+            text="يستخدم حسب نوع البخاخ ووصفة الطبيب",
+            question=original,
+            score=0.94,
+            metadata={"vector_similarity": 0.94, "retrieval_channel": "vector"},
+        )
+        exact_plan = replace(
+            plan(),
+            original_query=original,
+            corrected_query=original,
+            reformulated_query=reformulated,
+        )
+        subgraph = rerank_subgraph(
+            HybridRetrievalBundle(
+                query=original,
+                normalized_query=original,
+                reformulated_query=reformulated,
+                plan=exact_plan,
+                evidence=[exact],
+            ),
+            config=AppConfig(),
+        )
+        self.assertTrue(subgraph.evidence[0].metadata["direct_question_anchor"])
+        context = build_evidence_context(subgraph, reformulated, config=AppConfig())
+        self.assertEqual(context.evidence_items[0]["qa_id"], "diskhaler")
+        self.assertEqual(context.evidence_items[0]["vector_similarity"], 0.94)
+
     def test_context_preserves_one_relation_backed_evidence_item(self) -> None:
         vector_item = RetrievedEvidence(
             evidence_id="mention::vector",
@@ -234,6 +332,24 @@ class RetrievalQualityGuardTests(unittest.TestCase):
         )
         self.assertEqual(extract_claims(generated), [])
 
+    def test_structured_limitation_is_not_treated_as_a_factual_claim(self) -> None:
+        generated = GeneratedAnswer(
+            query="ما علاج الربو؟",
+            answer="لا توجد أدلة كافية في الرسم الطبي للإجابة بثقة.",
+            generation_status="generated",
+            claims=[AnswerClaim("لا توجد أدلة كافية في الرسم الطبي للإجابة بثقة.", ["E1"])],
+        )
+        self.assertEqual(extract_claims(generated), [])
+
+    def test_meta_evidence_limitation_is_not_a_factual_claim(self) -> None:
+        generated = GeneratedAnswer(
+            query="ما علاج الربو؟",
+            answer="لا توجد معلومات كافية في الأدلة المرفقة للإجابة.",
+            generation_status="generated",
+            claims=[AnswerClaim("لا توجد معلومات كافية في الأدلة المرفقة للإجابة.")],
+        )
+        self.assertEqual(extract_claims(generated), [])
+
     def test_relation_fact_can_support_a_cited_claim(self) -> None:
         context = EvidenceContextBundle(
             query="ما علاج الربو؟",
@@ -274,6 +390,75 @@ class RetrievalQualityGuardTests(unittest.TestCase):
         )
         self.assertEqual(rows[0].status, "supported")
 
+    def test_interrogative_ma_in_source_question_is_not_negation(self) -> None:
+        context = EvidenceContextBundle(
+            query="ما علاج انخفاض البروجستيرون؟",
+            reformulated_query="ما علاج انخفاض البروجستيرون؟",
+            primary_intent="treatment_request",
+            evidence_items=[
+                {
+                    "evidence_id": "E1",
+                    "evidence": "وقف التدخين من الوسائل المتبعة لعلاج انخفاض البروجستيرون",
+                    "source_question": "ما علاج انخفاض البروجستيرون؟",
+                    "source_answer": "وقف التدخين من الوسائل المتبعة لعلاج انخفاض البروجستيرون",
+                    "answer_relevance": 0.95,
+                    "intent_support": 1.0,
+                    "relation_ids": [],
+                }
+            ],
+            allowed_evidence_ids=["E1"],
+        )
+        rows = verify_claims(
+            [AnswerClaim("الإقلاع عن التدخين يساعد في علاج انخفاض البروجستيرون", ["E1"])],
+            context,
+        )
+        self.assertEqual(rows[0].status, "supported")
+
+    def test_source_question_alone_cannot_support_a_factual_claim(self) -> None:
+        context = EvidenceContextBundle(
+            query="هل الربو يسبب الحمى؟",
+            reformulated_query="هل الربو يسبب الحمى؟",
+            primary_intent="cause_request",
+            evidence_items=[
+                {
+                    "evidence_id": "E1",
+                    "evidence": "ينبغي مراجعة الطبيب لتقييم الحالة",
+                    "source_question": "هل الربو يسبب الحمى؟",
+                    "source_answer": "ينبغي مراجعة الطبيب لتقييم الحالة",
+                    "answer_relevance": 0.9,
+                    "intent_support": 1.0,
+                    "relation_ids": [],
+                }
+            ],
+            allowed_evidence_ids=["E1"],
+        )
+        rows = verify_claims([AnswerClaim("الربو يسبب الحمى", ["E1"])], context)
+        self.assertEqual(rows[0].status, "unsupported")
+
+    def test_recommendation_paraphrase_accepts_explicit_action_evidence(self) -> None:
+        context = EvidenceContextBundle(
+            query="ما علاج حمو الفم؟",
+            reformulated_query="ما علاج حمو الفم؟",
+            primary_intent="treatment_request",
+            evidence_items=[
+                {
+                    "evidence_id": "E1",
+                    "evidence": "استعمال غسولات فموية طبية والمضمضة بالماء الدافئ والملح",
+                    "source_question": "",
+                    "source_answer": "استعمال غسولات فموية طبية والمضمضة بالماء الدافئ والملح",
+                    "answer_relevance": 0.9,
+                    "intent_support": 1.0,
+                    "relation_ids": [],
+                }
+            ],
+            allowed_evidence_ids=["E1"],
+        )
+        rows = verify_claims(
+            [AnswerClaim("ينصح باستعمال غسولات فموية والمضمضة بالماء الدافئ والملح", ["E1"])],
+            context,
+        )
+        self.assertEqual(rows[0].status, "supported")
+
     def test_named_hormone_identity_distinguishes_progesterone_from_testosterone(self) -> None:
         query = "رفع مستوى هرمون البروجستيرون"
         progesterone = medical_identity_similarity(query, "هرمون البروجسترون")
@@ -285,6 +470,11 @@ class RetrievalQualityGuardTests(unittest.TestCase):
         eye_query = "أنا أعاني من ضعف النظر والحول في العين اليسرى"
         unrelated = "أنا أعاني من ألم الرأس وكثرة النسيان"
         self.assertLess(medical_identity_similarity(eye_query, unrelated), 0.50)
+
+    def test_dizziness_does_not_match_head_pain_by_fuzzy_spelling(self) -> None:
+        dizziness = "دوخة وإغماء بعد تحاليل طبيعية"
+        head_pain = "ألم مستمر في الرأس من الخلف"
+        self.assertLess(medical_identity_similarity(dizziness, head_pain), 0.50)
 
     def test_arabic_clitics_do_not_hide_anatomical_locations(self) -> None:
         self.assertEqual(anatomy_terms("بطني متورم وأخشى تضخماً بالكبد"), {"بطن", "كبد"})
@@ -455,6 +645,58 @@ class RetrievalQualityGuardTests(unittest.TestCase):
         )
         self.assertEqual(rows[0].status, "supported")
         self.assertGreaterEqual(rows[0].question_relevance, 0.82)
+
+    def test_high_trust_context_promotes_a_weak_lexical_paraphrase(self) -> None:
+        context = EvidenceContextBundle(
+            query="ما الفحوصات المطلوبة للدوخة والإغماء؟",
+            reformulated_query="ما الفحوصات المطلوبة للدوخة والإغماء؟",
+            primary_intent="test_request",
+            evidence_items=[
+                {
+                    "evidence_id": "E1",
+                    "evidence": "مبدئيا ننصحك بقياس ضغط الدم وعمل رسم مخ بالكمبيوتر",
+                    "source_question": "دوخة وإغماء مستمران",
+                    "source_answer": "قياس ضغط الدم وعمل رسم مخ بالكمبيوتر",
+                    "answer_relevance": 0.91,
+                    "entity_identity": 0.83,
+                    "intent_support": 1.0,
+                    "vector_similarity": 0.92,
+                    "relation_ids": [],
+                }
+            ],
+            allowed_evidence_ids=["E1"],
+        )
+        rows = verify_claims(
+            [AnswerClaim("قياس ضغط الدم ضروري لتقييم الدوخة والإغماء", ["E1"])],
+            context,
+        )
+        self.assertEqual(rows[0].status, "supported")
+
+    def test_low_identity_context_does_not_promote_a_weak_paraphrase(self) -> None:
+        context = EvidenceContextBundle(
+            query="ما الفحوصات المطلوبة للكبد؟",
+            reformulated_query="ما الفحوصات المطلوبة للكبد؟",
+            primary_intent="test_request",
+            evidence_items=[
+                {
+                    "evidence_id": "E1",
+                    "evidence": "صورة الدم من الفحوصات المتاحة",
+                    "source_question": "ما فحوصات الدم؟",
+                    "source_answer": "صورة الدم",
+                    "answer_relevance": 0.90,
+                    "entity_identity": 0.05,
+                    "intent_support": 1.0,
+                    "vector_similarity": 0.92,
+                    "relation_ids": [],
+                }
+            ],
+            allowed_evidence_ids=["E1"],
+        )
+        rows = verify_claims(
+            [AnswerClaim("فحص صورة الدم يكشف الاضطرابات المرتبطة بالكبد", ["E1"])],
+            context,
+        )
+        self.assertNotEqual(rows[0].status, "supported")
 
     def test_h_pylori_compound_claim_is_split_and_supported_core_survives(self) -> None:
         generated = GeneratedAnswer(

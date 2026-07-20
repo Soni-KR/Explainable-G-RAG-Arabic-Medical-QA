@@ -51,8 +51,8 @@ Steps 1-4 implementations.
 | Step 12 | Implemented | evidence-grounded GPT-OSS-20B generation |
 | Steps 13-17 | Implemented | verification, mitigation, scoring, explanation |
 | Retrieval evaluation | 100-query ablation complete | `outputs/evaluation/retrieval/ablation_100q` |
-| Generation evaluation | 15-query valid pilot complete | `outputs/evaluation/generation/pilot_15q` |
-| 100-query generation | Incomplete and resumable | `outputs/evaluation/cache/evaluation_v1_generation_verifierfix_100q_resumed_20260717` |
+| Generation evaluation | 100-query full-hybrid run complete | `outputs/evaluation/generation/evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1` |
+| Final verifier re-audit | Complete, zero API calls | `outputs/evaluation/generation/evaluation_v1_e2e_full_hybrid_verifierfix3_100q_v1` |
 
 ## Final Architecture
 
@@ -317,9 +317,15 @@ python src/step17_build_explainable_output.py --query "ما علاج الربو�
 ### Steps 13-15 changes
 
 - Claims are split atomically while preserving abbreviations such as `H. pylori`.
+- Limitation text is excluded even when the model incorrectly returns it as a
+  structured factual claim.
 - Verification checks citations, normalized support, numbers, negation, anatomy,
   intent, and whether recommendations occur in the same evidence segment.
-- Conservative phrase equivalences accept near-exact evidence paraphrases.
+- A source question cannot support a factual claim; only evidence text, source
+  answers, and validated relation facts can do so.
+- Negation is checked on local clauses, and interrogative Arabic `ما` is not treated
+  as a universal negation marker.
+- Conservative phrase/action equivalences accept near-exact evidence paraphrases.
 - Unsupported claims are removed; technical failures remain distinguishable from
   insufficient evidence.
 
@@ -385,26 +391,48 @@ reported claim support `1.0` over three scoreable queries and citation validity
 The question-by-question Steps 8-12 explanation is
 `outputs/evaluation/qualitative/pilot_15q_steps08_12.md`.
 
-### Resumable 100-question generation
+### Completed 100-question full-hybrid generation
 
-The first attempt was invalid because every output was a rate-limit/evidence
-fallback, so it is not an active result. The replacement cache currently contains
-12 completed records, five successful Step 12 responses, and 12 audits.
+`evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1` reused the same frozen Step 8
+and retrieval candidates for all questions. It completed all 100 rows with 74
+successful GPT-OSS-20B generations and 26 evidence fallbacks. Successful API calls
+remain in the append-only cache, so no completed call needs to be repeated.
+
+The final offline verifier re-audit is
+`evaluation_v1_e2e_full_hybrid_verifierfix3_100q_v1`. It reused the exact saved
+Step 8-12 artifacts and made zero API calls. Results:
+
+| Measure | Result |
+|---|---:|
+| Questions | 100 |
+| Step 12 successful generations | 74 |
+| Substantive post-mitigation answers | 18 |
+| Fully answerable | 10 |
+| Partially answerable | 8 |
+| Insufficient evidence after mitigation | 82 |
+| Retained citation-backed claims | 31 |
+| BERTScore F1 over substantive answers only | 0.673289 |
+
+Automatic claim support and citation validity are both `1.0` over the 18 retained
+answers because Step 15 deliberately removes every claim that fails the verifier.
+They measure enforcement of the current guards, not independent medical accuracy.
+Human claim annotations are still required for a defensible claim-support and
+hallucination result.
+
+The runner supports an offline, non-overwriting re-audit when Steps 13-16 change:
 
 ```powershell
 python scripts/run_generation_ablation.py `
   --gold-file data/evaluation/retrieval_gold_annotations_100.csv `
   --mode full_pipeline `
-  --run-id evaluation_v1_generation_verifierfix_100q_resumed_20260717 `
-  --reuse-retrieval-run outputs/evaluation/retrieval/ablation_100q `
-  --resume `
-  --request-interval-seconds 8 `
-  --max-rate-limit-retries 6 `
-  --rate-limit-backoff-seconds 30
+  --run-id NEW_NON_OVERWRITING_RUN_ID `
+  --reaudit-generation-run outputs/evaluation/generation/evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1
 ```
 
-This resumes Step 12 only from frozen retrieval, caches successful calls, and does
-not change retrieval thresholds.
+The remaining end-to-end ablation work is to complete generation for vector-only,
+graph-only, and hybrid-without-reranking using the same frozen questions, Step 8
+outputs, generator settings, and prompts. Formal Recall@5, MRR, and nDCG@10 remain
+unavailable until the provisional retrieval labels receive human confirmation.
 
 ## Verification
 
