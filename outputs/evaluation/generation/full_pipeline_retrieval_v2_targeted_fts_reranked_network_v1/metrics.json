@@ -1,0 +1,48 @@
+{
+  "full_pipeline": {
+    "bertscore": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "claim_grounding": {
+      "status": "computed",
+      "evaluated_query_count": 26,
+      "claim_support_rate": 1.0,
+      "hallucination_rate": 0.0
+    },
+    "citation_validity": {
+      "status": "computed",
+      "evaluated_query_count": 26,
+      "citation_validity": 1.0,
+      "claims_with_valid_citation_rate": 1.0
+    },
+    "answer_completeness": {
+      "status": "computed",
+      "answerability_counts": {
+        "partially_answerable": 4,
+        "insufficient_evidence": 70,
+        "supported_but_incomplete": 20,
+        "generation_unavailable": 4,
+        "fully_answerable": 2
+      },
+      "average_query_coverage": 0.339615
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 100,
+      "average_latency_ms": {
+        "end_to_end": 15602.01017,
+        "step08_query_understanding": 0.0,
+        "step08_retrieval_planning": 0.0,
+        "step09_hybrid_retrieval": 0.0,
+        "step10_subgraph_reranking": 72.25378,
+        "step11_context_construction": 84.74927,
+        "step12_answer_generation": 2874.56465,
+        "step13_claim_extraction": 0.02972,
+        "step14_claim_verification": 5.33804,
+        "step15_hallucination_mitigation": 0.74707,
+        "step16_reliability_scoring": 0.02033
+      }
+    }
+  }
+}

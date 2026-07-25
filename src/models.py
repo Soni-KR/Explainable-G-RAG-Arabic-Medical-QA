@@ -164,6 +164,7 @@ class HybridRetrievalBundle:
     normalized_query: str
     reformulated_query: str
     plan: RetrievalPlanResult
+    query_medical_phrases: list[str] = field(default_factory=list)
     vector_results: list[VectorSearchResult] = field(default_factory=list)
     relations: list[RetrievedMedicalRelation] = field(default_factory=list)
     evidence: list[RetrievedEvidence] = field(default_factory=list)
@@ -174,6 +175,7 @@ class HybridRetrievalBundle:
 class RerankedSubgraph:
     query: str
     primary_intent: str = ""
+    query_medical_phrases: list[str] = field(default_factory=list)
     relations: list[RetrievedMedicalRelation] = field(default_factory=list)
     evidence: list[RetrievedEvidence] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -184,6 +186,7 @@ class EvidenceContextBundle:
     query: str
     reformulated_query: str
     primary_intent: str = ""
+    query_medical_phrases: list[str] = field(default_factory=list)
     graph_facts: list[dict[str, Any]] = field(default_factory=list)
     evidence_items: list[dict[str, Any]] = field(default_factory=list)
     allowed_evidence_ids: list[str] = field(default_factory=list)
@@ -220,9 +223,12 @@ class ClaimVerification:
     status: str
     support_score: float
     question_relevance: float = 0.0
+    query_concept_coverage: float = 0.0
     valid_citations: list[str] = field(default_factory=list)
     valid_qa_ids: list[str] = field(default_factory=list)
     supporting_relation_ids: list[str] = field(default_factory=list)
+    best_evidence_id: str = ""
+    failed_checks: list[str] = field(default_factory=list)
     reason: str = ""
 
 
@@ -230,6 +236,8 @@ class ClaimVerification:
 class MitigatedAnswer:
     answer: str
     answerability: str
+    query_coverage: float = 0.0
+    missing_query_concepts: list[str] = field(default_factory=list)
     kept_claims: list[AnswerClaim] = field(default_factory=list)
     removed_claims: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
@@ -254,9 +262,12 @@ class ExplainableMedicalAnswer:
     answer: str
     answerability: str
     reliability: ReliabilityResult
+    query_coverage: float = 0.0
+    missing_query_concepts: list[str] = field(default_factory=list)
     retrieved_entities: list[dict[str, Any]] = field(default_factory=list)
     supporting_relations: list[dict[str, Any]] = field(default_factory=list)
     evidence: list[dict[str, Any]] = field(default_factory=list)
+    claim_audit: list[dict[str, Any]] = field(default_factory=list)
     removed_claims: list[str] = field(default_factory=list)
     limitations: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)

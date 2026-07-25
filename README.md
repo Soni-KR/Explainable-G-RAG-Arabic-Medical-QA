@@ -50,9 +50,10 @@ Steps 1-4 implementations.
 | Steps 9-11 | Implemented | retrieval, reranking, evidence context |
 | Step 12 | Implemented | evidence-grounded GPT-OSS-20B generation |
 | Steps 13-17 | Implemented | verification, mitigation, scoring, explanation |
-| Retrieval evaluation | 100-query ablation complete | `outputs/evaluation/retrieval/ablation_100q` |
+| Retrieval evaluation | Leakage-free 100-query full-hybrid diagnostic complete | `outputs/evaluation/retrieval/evaluation_v1_retrieval_fullhybrid_qacorpus_identityfix_100q_v1` |
 | Generation evaluation | 100-query full-hybrid run complete | `outputs/evaluation/generation/evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1` |
-| Final verifier re-audit | Complete, zero API calls | `outputs/evaluation/generation/evaluation_v1_e2e_full_hybrid_verifierfix3_100q_v1` |
+| Evidence-local verifier re-audit | Complete, zero API calls | `outputs/evaluation/generation/evaluation_v1_e2e_full_hybrid_evidencelocal_100q_v1` |
+| Claim-first generation pilot | Complete, 3/3 generated | `outputs/evaluation/generation/evaluation_v1_claimfirst_pilot_3q_v1` |
 
 ## Final Architecture
 
@@ -74,8 +75,8 @@ Arabic query
   -> vector + graph + lexical/direct-QA hybrid retrieval
   -> identity/anatomy/intent-aware reranking
   -> compact evidence context
-  -> evidence-only GPT-OSS-20B answer generation
-  -> atomic claims and citation verification
+  -> one-call claim-first GPT-OSS-20B generation
+  -> per-claim/per-evidence citation verification
   -> unsupported-claim mitigation
   -> reliability score and explainable output
 ```
@@ -261,6 +262,11 @@ python src/step08d_plan_retrieval.py --query "ما علاج الربو؟"
 Hybrid retrieval combines E5 vector search over entities/evidence/QA records with
 Neo4j graph traversal and direct lexical/QA evidence.
 
+The graph contains only 2,549 QA records, so a separate held-out-safe SQLite FTS5
+index now exposes 807,698 deduplicated Q&A records from the full AHD corpus. All
+500 normalized `eval_test` questions, including duplicate source occurrences, are
+excluded before indexing. The external corpus never changes `final_v1`.
+
 After qualitative testing, graph expansion was tightened because semantically close
 entities were sometimes medically different. The current code:
 
@@ -277,9 +283,12 @@ the clean ablation, so it is excluded from production.
 ### Step 10 changes
 
 The original reranker over-rewarded relation confidence and general similarity. It
-now exposes and combines semantic support, entity identity, intent match, evidence
-quality, and validated confidence while penalizing anatomical mismatch, generic
-entities, and type conflicts.
+now exposes and combines semantic support, query-denominated medical-concept
+coverage, constraint coverage, entity identity, intent match, source quality, and
+graph support. Anatomical mismatch, unrelated clinical conditions, generic matches,
+and type conflicts receive explicit penalties. Step 8's extracted DiseaseCondition
+and Symptom phrases are the primary relevance anchors, so conversational words and
+background treatments are not mistaken for required medical concepts.
 
 The semantic-context correction preserves each vector candidate's original E5
 similarity in metadata. This prevents Step 10 from replacing a strong semantic
@@ -287,16 +296,22 @@ signal with a lower aggregate score before Step 11 can inspect it.
 
 ### Step 11 changes
 
-The original context nearly always supplied twelve items. It now uses minimum score,
-relative score margin, source balance, deduplication, and a configurable maximum.
+The original context nearly always supplied twelve items. It now uses absolute
+answer-relevance, concept-coverage, intent, source-quality, and mismatch gates before
+applying a secondary coverage-aware score margin, deduplication, and a configurable
+maximum. A lower-ranked item survives the margin only when it adds a missing query
+concept or has a vetted semantic/direct-question anchor.
 Only useful `R*` relation facts and `E*` evidence cards become the citation allowlist.
+Graph evidence is no longer injected merely for channel diversity; it must pass the
+same relevance and safety competition as direct QA and evidence passages.
 
 Step 11 may also retain a high-confidence vector paraphrase when its E5 score is at
 least `AHD_CONTEXT_SEMANTIC_MIN_SCORE` (default `0.84`). Intent and anatomical
-mismatch gates remain mandatory. In the frozen 100-question offline diagnostic,
-context coverage increased from 31 to 74 questions while mean reference-context
-cosine remained stable (`0.8494` before, `0.8463` after). These are diagnostic
-dataset-derived comparisons, not human-confirmed retrieval metrics.
+mismatch gates remain mandatory. Replaying the updated Steps 10-11 over the frozen,
+leakage-free 100-question candidates retains context for 70 questions, averages 2.55
+items per query, and keeps graph facts in four contexts. The stricter run is not yet
+a human-confirmed improvement: candidate labels are required before comparing its
+precision with the previous 77-question diagnostic.
 
 ```powershell
 python src/step17_build_explainable_output.py --query "ما علاج الربو؟" --context-only
@@ -308,8 +323,10 @@ python src/step17_build_explainable_output.py --query "ما علاج الربو�
 
 - Final generation uses Groq `openai/gpt-oss-20b`, not Qwen.
 - The model receives only the query and selected Step 11 evidence.
-- Strict JSON returns an Arabic answer, atomic claims, citations, QA IDs, relation
-  IDs, and limitations.
+- Prompt `grounded_claim_first_v3` asks the model to select atomic cited claims
+  first, then compose `answer_ar` only from those claims in the same API call.
+- Strict JSON returns the Arabic answer, atomic claims, claim-specific citations,
+  QA IDs, relation IDs, and limitations.
 - Python removes invented IDs outside the evidence allowlist.
 - API failures are technical fallbacks, not medical answers.
 - Evaluation caches every successful call and retries HTTP 429 with backoff.
@@ -326,6 +343,16 @@ python src/step17_build_explainable_output.py --query "ما علاج الربو�
 - Negation is checked on local clauses, and interrogative Arabic `ما` is not treated
   as a universal negation marker.
 - Conservative phrase/action equivalences accept near-exact evidence paraphrases.
+- Verification evaluates a complete feature vector for each claim/evidence pair;
+  support from one citation can no longer be combined with identity or intent from
+  another citation.
+- A claim must also cover the query's Step 8 medical anchors, or be supported by a
+  citation that demonstrably covers them; a faithfully cited wrong-topic claim is
+  rejected as `claim_query_concept_mismatch`.
+- Step 15 reports `fully_answerable`, `partially_answerable`,
+  `supported_but_incomplete`, or `insufficient_evidence` using supported-claim query
+  coverage, not claim support alone.
+- Split claims retain only citations that independently support that child claim.
 - Unsupported claims are removed; technical failures remain distinguishable from
   insufficient evidence.
 
@@ -338,7 +365,9 @@ Reliability combines retrieval strength, evidence quality, supported claims,
 citation validity, and warnings. It is explicitly uncalibrated until enough human
 labels exist for AUROC/AUPRC and calibration analysis. Step 17 returns the answer,
 retrieved graph/evidence, citations, claim audit, limitations, reliability metadata,
-and per-stage latency.
+and per-stage latency. Step 10 and Step 16 use one shared source-prior policy,
+including `ahd_heldout_safe_corpus = 0.95`; Step 17 exposes each claim's best
+evidence, score, failed checks, valid citations, and reason.
 
 ```powershell
 python src/step17_build_explainable_output.py --query "ما علاج الربو؟"
@@ -352,14 +381,75 @@ Retrieval and claim annotations are created independently of Step 8, retrieval
 outputs, and model predictions. Dataset-derived labels remain explicitly
 `provisional_dataset_annotation` until human confirmation. Metrics requiring gold
 return `unavailable` rather than treating provisional labels as official truth.
+Candidate-relevance labels are a separate diagnostic dataset: reviewers can see the
+system's candidates and scores, so these labels may train or diagnose the reranker
+but must never be copied into independent retrieval gold.
 
 Active files:
 
 - `retrieval_gold_annotations_100.csv`: 100 provisional held-out questions.
 - `human_claim_annotations_100.csv`: 179 provisional claim rows for human review.
+- `candidate_relevance_annotations_100.csv`: frozen unlabeled candidate queue.
+- `candidate_relevance_annotations_100_final.csv`: all 540 human judgments covering
+  the top five evidence candidates and top three available relations for 99
+  candidate-bearing queries. The remaining query (`evalv1_045`) is non-medical and
+  correctly has retrieval disabled rather than receiving a fabricated candidate.
 - `pilot_retrieval_annotations_15.csv`: exact retained qualitative cohort.
 - `retrieval_generation_gold_template.csv`: blank annotation schema.
 - `ANNOTATION_GUIDE.md`: human labeling/adjudication instructions.
+
+```powershell
+python scripts/prepare_candidate_relevance_annotations.py --refresh
+python scripts/train_candidate_reranker.py `
+  --annotations data/evaluation/candidate_relevance_annotations_100_final.csv `
+  --confirmed-annotator-id user_human_review_20260723
+```
+
+The final file contains 335 irrelevant, 157 related-but-incomplete, and 48 directly
+answering candidates. Only 37/99 queries contain any direct candidate, 44 contain
+partial evidence only, and 18 contain only irrelevant candidates. All direct
+candidates are QA/evidence passages; no graph relation received label 2.
+
+The trainer uses query-grouped five-fold validation and two interpretable stages:
+irrelevant versus usable, then partial versus direct. Its phrase-aware out-of-fold
+ranking improves evidence nDCG@5 from `0.624496` to `0.683154` and direct-at-rank-1
+from 15 to 19 queries. The model remains disabled because the Step 11 replay shows
+only a modest precision gain rather than a clear coverage improvement.
+
+| Step 11 replay | Useful precision | Direct precision | Direct queries retained |
+|---|---:|---:|---:|
+| Current deterministic | 0.527778 | 0.183333 | 25/37 |
+| 25% learned blend | 0.537572 | 0.190751 | 25/37 |
+| 50% learned blend | 0.552795 | 0.198758 | 25/37 |
+| Learned score only | 0.560284 | 0.198582 | 25/37 |
+
+These are out-of-fold diagnostics over the annotated candidate pool, not independent
+test results. Production Steps 10-11 are unchanged. The next retrieval work should
+target the 18 all-zero queries and, when completeness is required, the 44
+partial-only queries.
+
+### Targeted partial-only retrieval expansion
+
+The first expansion phase deliberately targets only the 44 partial-only queries;
+the 18 all-zero queries remain valid `insufficient_evidence` cases. Three
+query-derived variants are searched against the held-out-safe 807,698-row SQLite
+FTS index. Reference answers and human relevance labels are not used to construct
+queries. Existing candidates are excluded by query/QA ID and results are
+deduplicated across variants.
+
+```powershell
+python scripts/run_partial_only_fts_expansion.py `
+  --per-variant-k 10 `
+  --max-new-per-query 12 `
+  --expand-graph-aliases
+```
+
+The run produced 483 new candidates covering all 44 queries, excluded 56 existing
+hits, and found 103 candidates through multiple variants. Variant B loaded 34
+aliases from 11 linked `final_v1` entities. Two unsafe Step 8 substitutions
+(`حساسية → إحساس` and `دبقي → دموي`) were detected automatically; those queries
+used the original text only. The candidate CSV remains pending human annotation
+before any retrieval or generation claim is made.
 
 `src/evaluation_metrics.py` implements entity precision/recall/F1/BERTScore,
 relation candidate/triplet metrics, Recall@5, MRR, nDCG@10, answer BERTScore,
@@ -398,26 +488,50 @@ and retrieval candidates for all questions. It completed all 100 rows with 74
 successful GPT-OSS-20B generations and 26 evidence fallbacks. Successful API calls
 remain in the append-only cache, so no completed call needs to be repeated.
 
-The final offline verifier re-audit is
-`evaluation_v1_e2e_full_hybrid_verifierfix3_100q_v1`. It reused the exact saved
-Step 8-12 artifacts and made zero API calls. Results:
+The latest offline evidence-local verifier diagnostic is
+`evaluation_v1_e2e_full_hybrid_evidencelocal_100q_v1`. It reused the exact saved
+Step 8-12 artifacts and made zero API calls. It verifies every claim against one
+complete evidence-row feature vector instead of mixing maxima across citations.
+Results:
 
 | Measure | Result |
 |---|---:|
 | Questions | 100 |
 | Step 12 successful generations | 74 |
-| Substantive post-mitigation answers | 18 |
-| Fully answerable | 10 |
-| Partially answerable | 8 |
-| Insufficient evidence after mitigation | 82 |
-| Retained citation-backed claims | 31 |
-| BERTScore F1 over substantive answers only | 0.673289 |
+| Substantive post-mitigation answers | 24 |
+| Fully answerable | 15 |
+| Partially answerable | 9 |
+| Insufficient evidence after mitigation | 76 |
+| Retained citation-backed claims | 40 |
+| BERTScore F1 over substantive answers only | 0.677404 |
 
-Automatic claim support and citation validity are both `1.0` over the 18 retained
+Automatic claim support and citation validity are both `1.0` over the 24 substantive
 answers because Step 15 deliberately removes every claim that fails the verifier.
 They measure enforcement of the current guards, not independent medical accuracy.
 Human claim annotations are still required for a defensible claim-support and
 hallucination result.
+
+The 15/9 answerability split above predates the new four-state completeness policy.
+It must not be reused as the current `fully_answerable` result; the clean 100-query
+generation will recompute those states after candidate annotation and reranker
+selection are frozen.
+
+This 100-question re-audit is a verifier diagnostic, not a clean held-out generation
+score: its frozen historical retrieval contains six exact-question leakage cases.
+The current leakage-free retrieval artifact is
+`evaluation_v1_retrieval_fullhybrid_qacorpus_identityfix_100q_v1`.
+
+The new claim-first prompt was tested separately on three leakage-free frozen
+retrieval examples in `evaluation_v1_claimfirst_pilot_3q_v1`: all three generated,
+seven claims survived, two unsupported claims were removed, and BERTScore F1 was
+`0.685236`. This sample is too small for a research conclusion.
+
+A local E5 reranking benchmark improved reference-overlap diagnostics on four of
+eight difficult queries, but full fallback retrieval took 94.5 seconds for eight
+queries and produced usable context for only three. It is now available only as a
+conditional second pass when ordinary Step 11 context is empty and the query has an
+identifiable medical concept. It never runs for already successful or non-medical
+queries.
 
 The runner supports an offline, non-overwriting re-audit when Steps 13-16 change:
 
@@ -429,10 +543,32 @@ python scripts/run_generation_ablation.py `
   --reaudit-generation-run outputs/evaluation/generation/evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1
 ```
 
-The remaining end-to-end ablation work is to complete generation for vector-only,
-graph-only, and hybrid-without-reranking using the same frozen questions, Step 8
-outputs, generator settings, and prompts. Formal Recall@5, MRR, and nDCG@10 remain
-unavailable until the provisional retrieval labels receive human confirmation.
+## Frozen Final Evaluation
+
+The authoritative run is
+`full_pipeline_retrieval_v2_targeted_fts_reranked_network_v1`. Its consolidated
+results and exact artifact paths are in
+`outputs/evaluation/FINAL_RESULTS.md`. The final offline BERTScore uses the
+original AHD answer associated with each frozen query as a dataset reference:
+
+| Scope | Queries | BERTScore F1 |
+|---|---:|---:|
+| All outcomes | 100 | 0.660743 |
+| LLM-generated outcomes | 66 | 0.665957 |
+| Substantive claim-bearing answers | 26 | 0.675803 |
+
+RAGAS context recall, context precision, faithfulness, and answer relevancy are
+implemented in `scripts/evaluate_frozen_run_offline.py`. They consume only the
+saved frozen artifacts and are resumable, but the complete judge run remains
+pending because the configured evaluator API quota was exhausted. Partial RAGAS
+scores are not treated as final results.
+
+The hallucination-mitigation seed is in
+`data/training/hallucination_mitigation_seed_v1/`. It contains 114 silver
+claim-support examples, 44 answer preferences, and 26 grounded-answer examples.
+Because these examples come from evaluation-v1, they are for schema design and
+error analysis only. Fine-tuning requires an equivalent human-confirmed dataset
+from a disjoint AHD training cohort.
 
 ## Verification
 

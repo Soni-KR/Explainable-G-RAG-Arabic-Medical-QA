@@ -1,0 +1,1 @@
+query_id,query,query_group,reference_answer,gold_entity_ids,gold_evidence_ids,gold_qa_ids,gold_relation_ids,answerable_from_final_graph,annotation_notes

@@ -1,0 +1,1214 @@
+{
+  "status": "complete",
+  "scope": "Frozen final_v1 graph; human-confirmed candidate relevance; retrieval_v2 conditional targeted FTS; 100-query generation.",
+  "graph": {
+    "graph_version": "final_v1",
+    "status": "frozen",
+    "frozen_at": "2026-07-11",
+    "counts": {
+      "entities": 2175,
+      "entity_mentions": 5767,
+      "relation_decisions": 3392,
+      "direct_relations": 1404,
+      "bidirectional_relations": 2808,
+      "qa_records_for_import": 2549
+    },
+    "files": {
+      "entities.csv": {
+        "bytes": 285102,
+        "sha256": "9205FD9C249A3BA1ADCC2346F519FCA057CCB6F55188E9BC9DABEC1F36715646"
+      },
+      "entity_mentions.csv": {
+        "bytes": 1685046,
+        "sha256": "346BA0020511CF08AF60F5DB7E4797FB37BF4E8448BF637FC212E612A6CCC44E"
+      },
+      "relation_decisions.csv": {
+        "bytes": 1332142,
+        "sha256": "7F2BC33A4BEBBC8E7CBF193C9FA7509027A7CDE37E3B5CB63F6AD3689621D76B"
+      },
+      "relations.csv": {
+        "bytes": 531044,
+        "sha256": "679D513F3A1FF3B2EF1B9A684223E952BD3E7D7C839289D0AECAAB4DB3BADACB"
+      },
+      "relations_bidirectional.csv": {
+        "bytes": 1274048,
+        "sha256": "51567D4F82D245266D0477F7BA98B2B1AAAC68314CF48A3756EE61E857F40FDA"
+      }
+    }
+  },
+  "retrieval": {
+    "candidate_pool_and_expansion": {
+      "integrity": {
+        "status": "ok",
+        "errors": 0,
+        "original_rows_preserved": 540,
+        "labeled_expansion_rows_preserved": 412,
+        "gold_queries": 100,
+        "combined_queries": 99
+      },
+      "before_expansion": {
+        "queries_with_direct_candidate": 37,
+        "partial_only_queries": 44,
+        "all_zero_queries": 18
+      },
+      "expansion": {
+        "target_queries": 44,
+        "reviewed_candidates": 412,
+        "label_counts": {
+          "0": 281,
+          "1": 119,
+          "2": 12
+        },
+        "queries_rescued_to_direct": 12,
+        "queries_still_partial": 32,
+        "rescued_within_expansion_rank_5": 5,
+        "reviewed_useful_yield": 0.317961,
+        "reviewed_direct_yield": 0.029126
+      },
+      "after_expansion": {
+        "queries_with_direct_candidate": 49,
+        "direct_coverage_candidate_bearing_99": 0.494949,
+        "direct_coverage_end_to_end_100": 0.49,
+        "combined_label_counts": {
+          "0": 620,
+          "1": 281,
+          "2": 62
+        }
+      },
+      "ranking_by_pool_rank": {
+        "original_pool_at_5": {
+          "queries": 99,
+          "direct_recall_at_5_all_queries": 0.363636,
+          "ndcg_at_5_all_queries": 0.583472,
+          "mrr_direct_all_queries": 0.227862,
+          "direct_at_rank_1_count": 15,
+          "useful_at_rank_1_count": 50
+        },
+        "combined_pool_at_5": {
+          "queries": 99,
+          "direct_recall_at_5_all_queries": 0.383838,
+          "ndcg_at_5_all_queries": 0.464287,
+          "mrr_direct_all_queries": 0.244061,
+          "direct_at_rank_1_count": 15,
+          "useful_at_rank_1_count": 50
+        },
+        "combined_pool_at_10": {
+          "queries": 99,
+          "direct_recall_at_10_all_queries": 0.414141,
+          "ndcg_at_10_all_queries": 0.524968,
+          "mrr_direct_all_queries": 0.244061,
+          "direct_at_rank_1_count": 15,
+          "useful_at_rank_1_count": 50
+        }
+      },
+      "annotation_caveat": "Expansion yield is calculated only over reviewed candidates. Unreviewed rows after stop-on-label-2 are not negatives."
+    },
+    "original_channel_yields": {
+      "fts_qa": {
+        "candidates": 196,
+        "label_0": 99,
+        "label_1": 65,
+        "label_2": 32,
+        "useful_yield": 0.494898,
+        "direct_yield": 0.163265
+      },
+      "graph": {
+        "candidates": 3,
+        "label_0": 3,
+        "label_1": 0,
+        "label_2": 0,
+        "useful_yield": 0.0,
+        "direct_yield": 0.0
+      },
+      "graph_relation": {
+        "candidates": 45,
+        "label_0": 43,
+        "label_1": 2,
+        "label_2": 0,
+        "useful_yield": 0.044444,
+        "direct_yield": 0.0
+      },
+      "vector": {
+        "candidates": 296,
+        "label_0": 190,
+        "label_1": 90,
+        "label_2": 16,
+        "useful_yield": 0.358108,
+        "direct_yield": 0.054054
+      }
+    },
+    "retrieval_v2_validation": {
+      "status": "ok",
+      "checks": {
+        "artifact_has_100_queries": true,
+        "all_44_target_queries_processed": true,
+        "target_cohort_matches_partial_only_queries": true,
+        "only_partial_only_queries_expanded": true,
+        "no_all_zero_queries_expanded": true,
+        "raw_candidate_count_is_483": true,
+        "builder_did_not_read_human_labels": true,
+        "artifact_contains_no_relevance_fields": true,
+        "supplemental_graph_disabled": true,
+        "learned_reranker_disabled": true,
+        "every_query_has_final_step11_context": true,
+        "decisions_cover_every_query": true
+      },
+      "failures": [],
+      "queries": 100,
+      "target_queries": 44,
+      "triggered_queries": 27,
+      "all_zero_queries": 18,
+      "raw_expansion_candidates": 483,
+      "labels_used_for_artifact_construction": false,
+      "labels_used_for_postbuild_cohort_audit": true
+    },
+    "retrieval_v2_configuration": {
+      "retrieval_version": "retrieval_v2",
+      "graph_version": "final_v1",
+      "created_at_utc": "2026-07-25T13:34:30.705761+00:00",
+      "baseline_file": "outputs\\evaluation\\retrieval\\evaluation_v1_retrieval_fullhybrid_qacorpus_identityfix_100q_v1\\full_hybrid.jsonl",
+      "baseline_sha256": "9503b7b4b059c5f14c63845c7ec2c474f69a51cfc780370a9059b67995bdc4db",
+      "raw_expansion_file": "outputs\\evaluation\\retrieval_expansion\\partial_only_fts_candidates_v1.csv",
+      "raw_expansion_sha256": "223cba8b07560efe0c1438bd321e3b12055039474a2e21a39352aebf5cef4b64",
+      "human_labels_read": false,
+      "supplemental_graph_used": false,
+      "learned_reranker_used": false,
+      "trigger": {
+        "requires_targeted_candidates": true,
+        "requires_nonempty_ordinary_context": true,
+        "requires_no_strong_direct_evidence": true,
+        "strong_answer_relevance": 0.75,
+        "strong_concept_coverage": 0.75,
+        "strong_intent_support": 0.5,
+        "strong_source_reliability": 0.75
+      },
+      "queries": 100,
+      "queries_with_targeted_candidates": 44,
+      "raw_expansion_candidates": 483,
+      "queries_triggered": 27,
+      "new_candidates_added": 241,
+      "runtime_retrieval_config": {
+        "entity_top_k": 10,
+        "evidence_top_k": 10,
+        "qa_top_k": 5,
+        "relation_top_k": 30,
+        "context_top_k": 12,
+        "context_max_items": 6,
+        "context_min_score": 0.4,
+        "context_min_answer_relevance": 0.35,
+        "context_min_source_reliability": 0.55,
+        "context_min_intent_support": 0.5,
+        "context_min_aggregate_concept_coverage": 0.25,
+        "context_semantic_min_score": 0.84,
+        "context_relative_margin": 0.12,
+        "max_hops": 1,
+        "semantic_seed_threshold": 0.72,
+        "semantic_weight": 0.45,
+        "graph_weight": 0.35,
+        "evidence_weight": 0.2
+      },
+      "output_file": "outputs\\evaluation\\retrieval\\evaluation_v1_retrieval_v2_targeted_fts\\full_hybrid_targeted_fts.jsonl",
+      "decisions_file": "outputs\\evaluation\\retrieval\\evaluation_v1_retrieval_v2_targeted_fts\\decisions.csv",
+      "methodology_warning": "This is a development artifact because targeted candidate availability was prepared for the previously identified 44-query partial-only cohort. The trigger itself is deterministic and label-free."
+    },
+    "latency_ablation": {
+      "lexical_only": {
+        "entities": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "evidence": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "qa": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "relations": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "efficiency": {
+          "status": "computed",
+          "run_count": 100,
+          "average_latency_ms": {
+            "end_to_end": 6186.96057,
+            "retrieval_mode": 5634.14086,
+            "step08_shared_query_processing": 552.81971
+          }
+        }
+      },
+      "vector_only": {
+        "entities": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "evidence": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "qa": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "relations": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "efficiency": {
+          "status": "computed",
+          "run_count": 100,
+          "average_latency_ms": {
+            "end_to_end": 633.94659,
+            "retrieval_mode": 81.12688,
+            "step08_shared_query_processing": 552.81971
+          }
+        }
+      },
+      "graph_only": {
+        "entities": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "evidence": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "qa": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "relations": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "efficiency": {
+          "status": "computed",
+          "run_count": 100,
+          "average_latency_ms": {
+            "end_to_end": 569.31368,
+            "retrieval_mode": 16.49397,
+            "step08_shared_query_processing": 552.81971
+          }
+        }
+      },
+      "hybrid_without_reranking": {
+        "entities": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "evidence": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "qa": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "relations": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "efficiency": {
+          "status": "computed",
+          "run_count": 100,
+          "average_latency_ms": {
+            "end_to_end": 645.58456,
+            "retrieval_mode": 92.76485,
+            "step08_shared_query_processing": 552.81971
+          }
+        }
+      },
+      "full_hybrid": {
+        "entities": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "evidence": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "qa": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "relations": {
+          "status": "unavailable",
+          "reason": "No independently annotated gold labels were available for this metric."
+        },
+        "efficiency": {
+          "status": "computed",
+          "run_count": 100,
+          "average_latency_ms": {
+            "end_to_end": 674.36472,
+            "retrieval_mode": 121.54501,
+            "step08_shared_query_processing": 552.81971
+          }
+        }
+      }
+    }
+  },
+  "reranker_experiment": {
+    "activation": "disabled_pending_explicit_production_decision",
+    "training_rows": 963,
+    "training_queries": 99,
+    "label_counts": {
+      "0": 620,
+      "1": 281,
+      "2": 62
+    },
+    "classification": {
+      "usable_vs_irrelevant": {
+        "roc_auc": 0.716409,
+        "average_precision": 0.587313,
+        "precision_at_0_5": 0.550505,
+        "recall_at_0_5": 0.635569,
+        "f1_at_0_5": 0.589986
+      },
+      "direct_vs_partial_among_usable": {
+        "roc_auc": 0.614826,
+        "average_precision": 0.342791,
+        "precision_at_0_5": 0.274336,
+        "recall_at_0_5": 0.5,
+        "f1_at_0_5": 0.354286
+      },
+      "direct_vs_all": {
+        "roc_auc": 0.732349,
+        "average_precision": 0.193629,
+        "precision_at_0_5": 0.180723,
+        "recall_at_0_5": 0.241935,
+        "f1_at_0_5": 0.206897
+      },
+      "three_class_macro_f1": 0.456769
+    },
+    "ranking": {
+      "current_candidate_rank": {
+        "queries": 99,
+        "queries_with_any_relevant_candidate": 81,
+        "queries_with_direct_candidate": 49,
+        "ndcg_at_5_all_queries": 0.467697,
+        "ndcg_at_5_relevant_queries": 0.57163,
+        "mrr_direct_all_queries": 0.242237,
+        "mrr_direct_eligible_queries": 0.489418,
+        "direct_at_rank_1_count": 15,
+        "useful_at_rank_1_count": 50,
+        "direct_at_rank_1_all_queries": 0.151515,
+        "direct_at_rank_1_eligible_queries": 0.306122,
+        "queries_retaining_direct_at_5": 38,
+        "useful_precision_at_3": 0.417508
+      },
+      "retrieval_score": {
+        "queries": 99,
+        "queries_with_any_relevant_candidate": 81,
+        "queries_with_direct_candidate": 49,
+        "ndcg_at_5_all_queries": 0.470997,
+        "ndcg_at_5_relevant_queries": 0.575663,
+        "mrr_direct_all_queries": 0.251286,
+        "mrr_direct_eligible_queries": 0.507701,
+        "direct_at_rank_1_count": 16,
+        "useful_at_rank_1_count": 44,
+        "direct_at_rank_1_all_queries": 0.161616,
+        "direct_at_rank_1_eligible_queries": 0.326531,
+        "queries_retaining_direct_at_5": 38,
+        "useful_precision_at_3": 0.420875
+      },
+      "answer_relevance": {
+        "queries": 99,
+        "queries_with_any_relevant_candidate": 81,
+        "queries_with_direct_candidate": 49,
+        "ndcg_at_5_all_queries": 0.47736,
+        "ndcg_at_5_relevant_queries": 0.58344,
+        "mrr_direct_all_queries": 0.228156,
+        "mrr_direct_eligible_queries": 0.460968,
+        "direct_at_rank_1_count": 14,
+        "useful_at_rank_1_count": 44,
+        "direct_at_rank_1_all_queries": 0.141414,
+        "direct_at_rank_1_eligible_queries": 0.285714,
+        "queries_retaining_direct_at_5": 37,
+        "useful_precision_at_3": 0.424242
+      },
+      "query_concept_coverage": {
+        "queries": 99,
+        "queries_with_any_relevant_candidate": 81,
+        "queries_with_direct_candidate": 49,
+        "ndcg_at_5_all_queries": 0.516621,
+        "ndcg_at_5_relevant_queries": 0.631425,
+        "mrr_direct_all_queries": 0.270123,
+        "mrr_direct_eligible_queries": 0.545759,
+        "direct_at_rank_1_count": 19,
+        "useful_at_rank_1_count": 59,
+        "direct_at_rank_1_all_queries": 0.191919,
+        "direct_at_rank_1_eligible_queries": 0.387755,
+        "queries_retaining_direct_at_5": 37,
+        "useful_precision_at_3": 0.478114
+      },
+      "oracle_human_label": {
+        "queries": 99,
+        "queries_with_any_relevant_candidate": 81,
+        "queries_with_direct_candidate": 49,
+        "ndcg_at_5_all_queries": 0.818182,
+        "ndcg_at_5_relevant_queries": 1.0,
+        "mrr_direct_all_queries": 0.494949,
+        "mrr_direct_eligible_queries": 1.0,
+        "direct_at_rank_1_count": 49,
+        "useful_at_rank_1_count": 81,
+        "direct_at_rank_1_all_queries": 0.494949,
+        "direct_at_rank_1_eligible_queries": 1.0,
+        "queries_retaining_direct_at_5": 49,
+        "useful_precision_at_3": 0.734007
+      },
+      "two_stage_cross_validated": {
+        "queries": 99,
+        "queries_with_any_relevant_candidate": 81,
+        "queries_with_direct_candidate": 49,
+        "ndcg_at_5_all_queries": 0.569969,
+        "ndcg_at_5_relevant_queries": 0.696629,
+        "mrr_direct_all_queries": 0.290119,
+        "mrr_direct_eligible_queries": 0.58616,
+        "direct_at_rank_1_count": 20,
+        "useful_at_rank_1_count": 59,
+        "direct_at_rank_1_all_queries": 0.20202,
+        "direct_at_rank_1_eligible_queries": 0.408163,
+        "queries_retaining_direct_at_5": 40,
+        "useful_precision_at_3": 0.494949
+      }
+    },
+    "decision": "Disabled. OOF ranking improved, but production-style context replay did not justify activation."
+  },
+  "step11_context": {
+    "evaluation_method": "actual_production_step10_step11_development_replay",
+    "graph_version": "final_v1",
+    "retrieval_file": "outputs\\evaluation\\retrieval\\evaluation_v1_retrieval_fullhybrid_qacorpus_identityfix_100q_v1\\full_hybrid.jsonl",
+    "expansion_file": "outputs\\evaluation\\retrieval_expansion\\partial_only_fts_candidates_v1.csv",
+    "baseline": {
+      "queries": 100,
+      "queries_with_context": 70,
+      "queries_with_known_useful_context": 51,
+      "queries_with_known_direct_context": 25,
+      "all_zero_queries_with_context": 10,
+      "known_selected_candidates": 163,
+      "unreviewed_selected_candidates": 92,
+      "selected_label_counts": {
+        "0": 70,
+        "1": 60,
+        "2": 33
+      },
+      "known_useful_precision": 0.570552,
+      "known_direct_precision": 0.202454
+    },
+    "targeted_expansion": {
+      "queries": 100,
+      "queries_with_context": 73,
+      "queries_with_known_useful_context": 56,
+      "queries_with_known_direct_context": 29,
+      "all_zero_queries_with_context": 10,
+      "known_selected_candidates": 208,
+      "unreviewed_selected_candidates": 88,
+      "selected_label_counts": {
+        "0": 84,
+        "1": 86,
+        "2": 38
+      },
+      "known_useful_precision": 0.596154,
+      "known_direct_precision": 0.182692
+    },
+    "unreviewed_selected_queue_rows": 0,
+    "decision": "ready_for_retrieval_decision"
+  },
+  "final_generation": {
+    "query_count": 100,
+    "generation_status": {
+      "generated": 66,
+      "fallback": 34
+    },
+    "fallback_types": {
+      "none": 66,
+      "insufficient_evidence": 30,
+      "technical_failure": 4
+    },
+    "answerability": {
+      "partially_answerable": 4,
+      "insufficient_evidence": 70,
+      "supported_but_incomplete": 20,
+      "generation_unavailable": 4,
+      "fully_answerable": 2
+    },
+    "queries_with_nonempty_context": 70,
+    "queries_with_post_mitigation_claims": 26,
+    "average_context_items": 2.89,
+    "maximum_context_items": 6,
+    "pre_mitigation": {
+      "claims": 114,
+      "supported": 36,
+      "weakly_supported": 3,
+      "unsupported": 75,
+      "support_or_weak_rate": 0.342105,
+      "unsupported_rate": 0.657895
+    },
+    "post_mitigation": {
+      "claims": 36,
+      "removed_claims": 78,
+      "claim_removal_rate": 0.684211,
+      "removed_verification_statuses": {
+        "unsupported": 75,
+        "weakly_supported": 3
+      },
+      "removal_failed_checks": {
+        "intent_mismatch": 37,
+        "claim_query_concept_mismatch": 33,
+        "support_below_weak_threshold": 15,
+        "anatomy_mismatch": 9,
+        "negation_mismatch": 8,
+        "number_mismatch": 5,
+        "no_valid_citation": 1,
+        "recommendation_not_supported": 1
+      }
+    },
+    "average_query_coverage": 0.0883,
+    "reliability": {
+      "labels": {
+        "low": 88,
+        "medium": 9,
+        "high": 3
+      },
+      "average_score": 0.159224,
+      "minimum_score": 0.0,
+      "maximum_score": 0.825,
+      "audit_disposition": {
+        "accept": 3,
+        "flag": 9,
+        "abstain": 88,
+        "mapping": {
+          "accept": "high reliability, score >= 0.80",
+          "flag": "medium reliability, 0.55 <= score < 0.80",
+          "abstain": "low reliability, score < 0.55"
+        },
+        "note": "This is an audit mapping of existing Step 16 labels, not a new production threshold."
+      },
+      "calibration_status": "unavailable",
+      "calibration_reason": "No independent answer-correctness labels exist for AUROC, AUPRC, or calibration analysis."
+    },
+    "generated_only": {
+      "queries": 66,
+      "answerability": {
+        "partially_answerable": 4,
+        "insufficient_evidence": 40,
+        "supported_but_incomplete": 20,
+        "fully_answerable": 2
+      },
+      "claim_bearing_queries": 26,
+      "substantive_answer_rate": 0.393939,
+      "post_mitigation_claims": 36,
+      "average_query_coverage": 0.133788,
+      "latency": {
+        "end_to_end": {
+          "mean_ms": 22363.95747,
+          "median_ms": 20521.309,
+          "p95_ms": 30184.47275,
+          "total_ms": 1476021.193
+        },
+        "step08_query_understanding": {
+          "mean_ms": 0.0,
+          "median_ms": 0.0,
+          "p95_ms": 0.0,
+          "total_ms": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean_ms": 0.0,
+          "median_ms": 0.0,
+          "p95_ms": 0.0,
+          "total_ms": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean_ms": 0.0,
+          "median_ms": 0.0,
+          "p95_ms": 0.0,
+          "total_ms": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean_ms": 72.827894,
+          "median_ms": 62.2765,
+          "p95_ms": 163.10125,
+          "total_ms": 4806.641
+        },
+        "step11_context_construction": {
+          "mean_ms": 92.410379,
+          "median_ms": 71.825,
+          "p95_ms": 185.6525,
+          "total_ms": 6099.085
+        },
+        "step12_answer_generation": {
+          "mean_ms": 4315.42753,
+          "median_ms": 893.248,
+          "p95_ms": 23741.52525,
+          "total_ms": 284818.217
+        },
+        "step13_claim_extraction": {
+          "mean_ms": 0.044424,
+          "median_ms": 0.041,
+          "p95_ms": 0.079,
+          "total_ms": 2.932
+        },
+        "step14_claim_verification": {
+          "mean_ms": 8.086136,
+          "median_ms": 4.793,
+          "p95_ms": 27.1305,
+          "total_ms": 533.685
+        },
+        "step15_hallucination_mitigation": {
+          "mean_ms": 1.004242,
+          "median_ms": 0.335,
+          "p95_ms": 4.146,
+          "total_ms": 66.28
+        },
+        "step16_reliability_scoring": {
+          "mean_ms": 0.02247,
+          "median_ms": 0.021,
+          "p95_ms": 0.0355,
+          "total_ms": 1.483
+        }
+      }
+    },
+    "fallback_only": {
+      "queries": 34,
+      "answerability": {
+        "insufficient_evidence": 30,
+        "generation_unavailable": 4
+      },
+      "claim_bearing_queries": 0,
+      "substantive_answer_rate": 0.0,
+      "post_mitigation_claims": 0,
+      "average_query_coverage": 0.0,
+      "latency": {
+        "end_to_end": {
+          "mean_ms": 2475.877176,
+          "median_ms": 142.0515,
+          "p95_ms": 23219.9715,
+          "total_ms": 84179.824
+        },
+        "step08_query_understanding": {
+          "mean_ms": 0.0,
+          "median_ms": 0.0,
+          "p95_ms": 0.0,
+          "total_ms": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean_ms": 0.0,
+          "median_ms": 0.0,
+          "p95_ms": 0.0,
+          "total_ms": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean_ms": 0.0,
+          "median_ms": 0.0,
+          "p95_ms": 0.0,
+          "total_ms": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean_ms": 71.139324,
+          "median_ms": 66.7295,
+          "p95_ms": 126.67845,
+          "total_ms": 2418.737
+        },
+        "step11_context_construction": {
+          "mean_ms": 69.877706,
+          "median_ms": 55.8585,
+          "p95_ms": 163.7477,
+          "total_ms": 2375.842
+        },
+        "step12_answer_generation": {
+          "mean_ms": 77.595529,
+          "median_ms": 0.01,
+          "p95_ms": 586.6297,
+          "total_ms": 2638.248
+        },
+        "step13_claim_extraction": {
+          "mean_ms": 0.001176,
+          "median_ms": 0.001,
+          "p95_ms": 0.002,
+          "total_ms": 0.04
+        },
+        "step14_claim_verification": {
+          "mean_ms": 0.0035,
+          "median_ms": 0.003,
+          "p95_ms": 0.006,
+          "total_ms": 0.119
+        },
+        "step15_hallucination_mitigation": {
+          "mean_ms": 0.247853,
+          "median_ms": 0.164,
+          "p95_ms": 0.58615,
+          "total_ms": 8.427
+        },
+        "step16_reliability_scoring": {
+          "mean_ms": 0.016176,
+          "median_ms": 0.014,
+          "p95_ms": 0.02485,
+          "total_ms": 0.55
+        }
+      }
+    },
+    "end_to_end": {
+      "queries": 100,
+      "answerability": {
+        "partially_answerable": 4,
+        "insufficient_evidence": 70,
+        "supported_but_incomplete": 20,
+        "generation_unavailable": 4,
+        "fully_answerable": 2
+      },
+      "claim_bearing_queries": 26,
+      "substantive_answer_rate": 0.26,
+      "post_mitigation_claims": 36,
+      "average_query_coverage": 0.0883,
+      "latency": {
+        "end_to_end": {
+          "mean_ms": 15602.01017,
+          "median_ms": 19853.5855,
+          "p95_ms": 30175.35255,
+          "total_ms": 1560201.017
+        },
+        "step08_query_understanding": {
+          "mean_ms": 0.0,
+          "median_ms": 0.0,
+          "p95_ms": 0.0,
+          "total_ms": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean_ms": 0.0,
+          "median_ms": 0.0,
+          "p95_ms": 0.0,
+          "total_ms": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean_ms": 0.0,
+          "median_ms": 0.0,
+          "p95_ms": 0.0,
+          "total_ms": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean_ms": 72.25378,
+          "median_ms": 62.9645,
+          "p95_ms": 144.5728,
+          "total_ms": 7225.378
+        },
+        "step11_context_construction": {
+          "mean_ms": 84.74927,
+          "median_ms": 68.202,
+          "p95_ms": 187.10405,
+          "total_ms": 8474.927
+        },
+        "step12_answer_generation": {
+          "mean_ms": 2874.56465,
+          "median_ms": 772.1875,
+          "p95_ms": 19964.28055,
+          "total_ms": 287456.465
+        },
+        "step13_claim_extraction": {
+          "mean_ms": 0.02972,
+          "median_ms": 0.025,
+          "p95_ms": 0.0771,
+          "total_ms": 2.972
+        },
+        "step14_claim_verification": {
+          "mean_ms": 5.33804,
+          "median_ms": 1.9875,
+          "p95_ms": 21.78635,
+          "total_ms": 533.804
+        },
+        "step15_hallucination_mitigation": {
+          "mean_ms": 0.74707,
+          "median_ms": 0.302,
+          "p95_ms": 3.43785,
+          "total_ms": 74.707
+        },
+        "step16_reliability_scoring": {
+          "mean_ms": 0.02033,
+          "median_ms": 0.018,
+          "p95_ms": 0.034,
+          "total_ms": 2.033
+        }
+      }
+    },
+    "context_outcomes": {
+      "empty": {
+        "queries": 30,
+        "generation_status": {
+          "fallback": 30
+        },
+        "fallback_types": {
+          "insufficient_evidence": 30
+        },
+        "answerability": {
+          "insufficient_evidence": 30
+        },
+        "claim_bearing_queries": 0
+      },
+      "nonempty": {
+        "queries": 70,
+        "generation_status": {
+          "generated": 66,
+          "fallback": 4
+        },
+        "fallback_types": {
+          "none": 66,
+          "technical_failure": 4
+        },
+        "answerability": {
+          "partially_answerable": 4,
+          "insufficient_evidence": 40,
+          "supported_but_incomplete": 20,
+          "generation_unavailable": 4,
+          "fully_answerable": 2
+        },
+        "claim_bearing_queries": 26
+      }
+    },
+    "failure_attribution": {
+      "retrieval_empty_context": 30,
+      "api_or_generation_technical_failure": 4,
+      "technical_failure_categories": {
+        "provider_response_schema_validation_failed": 4
+      },
+      "generated_but_no_claim_survived": 40,
+      "substantive_claim_bearing_answer": 26
+    },
+    "reported_metrics": {
+      "bertscore": {
+        "status": "unavailable",
+        "reason": "No independently annotated gold labels were available for this metric."
+      },
+      "claim_grounding": {
+        "status": "computed",
+        "evaluated_query_count": 26,
+        "claim_support_rate": 1.0,
+        "hallucination_rate": 0.0
+      },
+      "citation_validity": {
+        "status": "computed",
+        "evaluated_query_count": 26,
+        "citation_validity": 1.0,
+        "claims_with_valid_citation_rate": 1.0
+      },
+      "answer_completeness": {
+        "status": "computed",
+        "answerability_counts": {
+          "partially_answerable": 4,
+          "insufficient_evidence": 70,
+          "supported_but_incomplete": 20,
+          "generation_unavailable": 4,
+          "fully_answerable": 2
+        },
+        "average_query_coverage": 0.339615
+      },
+      "efficiency": {
+        "status": "computed",
+        "run_count": 100,
+        "average_latency_ms": {
+          "end_to_end": 15602.01017,
+          "step08_query_understanding": 0.0,
+          "step08_retrieval_planning": 0.0,
+          "step09_hybrid_retrieval": 0.0,
+          "step10_subgraph_reranking": 72.25378,
+          "step11_context_construction": 84.74927,
+          "step12_answer_generation": 2874.56465,
+          "step13_claim_extraction": 0.02972,
+          "step14_claim_verification": 5.33804,
+          "step15_hallucination_mitigation": 0.74707,
+          "step16_reliability_scoring": 0.02033
+        }
+      }
+    }
+  },
+  "automatic_reference_metrics": {
+    "reference_type": "original_ahd_answer",
+    "reference_status": "dataset reference for automatic evaluation; not clinician-adjudicated",
+    "bertscore": {
+      "all_100": {
+        "evaluated_queries": 100,
+        "precision": 0.675635,
+        "recall": 0.647052,
+        "f1": 0.660743
+      },
+      "generated_66": {
+        "evaluated_queries": 66,
+        "precision": 0.680636,
+        "recall": 0.652505,
+        "f1": 0.665957
+      },
+      "substantive_26": {
+        "evaluated_queries": 26,
+        "precision": 0.688926,
+        "recall": 0.664069,
+        "f1": 0.675803
+      }
+    },
+    "ragas": {
+      "context_recall": {
+        "available_scores": 1,
+        "scopes": {
+          "all_100": {
+            "evaluated_queries": 1,
+            "mean": 0.0
+          },
+          "generated_66": {
+            "evaluated_queries": 1,
+            "mean": 0.0
+          },
+          "substantive_26": {
+            "evaluated_queries": 1,
+            "mean": 0.0
+          }
+        }
+      },
+      "context_precision": {
+        "available_scores": 0,
+        "scopes": {
+          "all_100": {
+            "evaluated_queries": 0,
+            "mean": null
+          },
+          "generated_66": {
+            "evaluated_queries": 0,
+            "mean": null
+          },
+          "substantive_26": {
+            "evaluated_queries": 0,
+            "mean": null
+          }
+        }
+      },
+      "faithfulness": {
+        "available_scores": 0,
+        "scopes": {
+          "all_100": {
+            "evaluated_queries": 0,
+            "mean": null
+          },
+          "generated_66": {
+            "evaluated_queries": 0,
+            "mean": null
+          },
+          "substantive_26": {
+            "evaluated_queries": 0,
+            "mean": null
+          }
+        }
+      },
+      "answer_relevancy": {
+        "available_scores": 0,
+        "scopes": {
+          "all_100": {
+            "evaluated_queries": 0,
+            "mean": null
+          },
+          "generated_66": {
+            "evaluated_queries": 0,
+            "mean": null
+          },
+          "substantive_26": {
+            "evaluated_queries": 0,
+            "mean": null
+          }
+        }
+      }
+    },
+    "ragas_status": "rate_limited",
+    "manifest": {
+      "evaluation_name": "frozen_final_run_ahd_reference_v1",
+      "created_at_utc": "2026-07-25T17:43:49.631618+00:00",
+      "frozen_run_id": "full_pipeline_retrieval_v2_targeted_fts_reranked_network_v1",
+      "input_path": "outputs\\evaluation\\generation\\full_pipeline_retrieval_v2_targeted_fts_reranked_network_v1\\full_pipeline.jsonl",
+      "input_sha256": "21e56c46228447ab305fef64ec35a0671439dbd6c83d747254ca99a22614fcd6",
+      "query_count": 100,
+      "reference_type": "original_ahd_answer",
+      "reference_status": "dataset_reference_for_automatic_evaluation; not clinician-adjudicated",
+      "pipeline_rerun": false,
+      "retrieval_rerun": false,
+      "generation_rerun": false,
+      "bertscore_model": "bert-base-multilingual-cased",
+      "ragas_version": "0.4.3",
+      "ragas_evaluator_provider": "groq_openai_compatible",
+      "ragas_evaluator_model": "openai/gpt-oss-20b",
+      "ragas_embedding_model": "intfloat/multilingual-e5-base",
+      "ragas_metrics": [
+        "context_recall",
+        "context_precision",
+        "faithfulness",
+        "answer_relevancy"
+      ],
+      "answer_relevancy_strictness": 1,
+      "runtime": {
+        "python": "3.13.12 (tags/v3.13.12:1cbe481, Feb  3 2026, 18:22:25) [MSC v.1944 64 bit (AMD64)]",
+        "platform": "Windows-11-10.0.26200-SP0",
+        "executable": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\.venv-run\\Scripts\\python.exe",
+        "bert_score": "0.3.13",
+        "ragas": "0.4.3",
+        "sentence_transformers": "3.3.1"
+      },
+      "secrets_recorded": false
+    }
+  },
+  "final_runtime": {
+    "run_id": "full_pipeline_retrieval_v2_targeted_fts_reranked_network_v1",
+    "graph": {
+      "graph_version": "final_v1",
+      "counts": {
+        "MedicalEntity": 2175,
+        "EvidenceMention": 5767,
+        "QARecord": 2549,
+        "MEDICAL_RELATION": 2808,
+        "MENTIONED_IN": 5767,
+        "EVIDENCE_FROM": 5767
+      },
+      "read_only": true
+    },
+    "models": {
+      "query_analysis_provider": "groq",
+      "query_analysis_model": "openai/gpt-oss-20b",
+      "answer_provider": "groq",
+      "answer_model": "openai/gpt-oss-20b",
+      "embedding_model": "intfloat/multilingual-e5-base",
+      "embedding_dimension": 768,
+      "query_prompt_version": "query_analysis_v1",
+      "answer_prompt_version": "grounded_claim_first_v3",
+      "query_reasoning_effort": "low",
+      "answer_reasoning_effort": "low",
+      "query_temperature": 0.0,
+      "answer_temperature": 0.0
+    },
+    "thresholds": {
+      "semantic_seed_threshold": 0.72,
+      "claim_support_threshold": 0.4,
+      "claim_weak_threshold": 0.25,
+      "context_min_score": 0.4,
+      "context_min_answer_relevance": 0.35,
+      "context_min_source_reliability": 0.55,
+      "context_min_intent_support": 0.5,
+      "context_min_aggregate_concept_coverage": 0.25
+    },
+    "top_k": {
+      "entity": 10,
+      "evidence": 10,
+      "qa": 5,
+      "relation": 30,
+      "context": 12,
+      "max_hops": 1
+    },
+    "supplemental_graph_used": false,
+    "git": {
+      "commit": "c98e9ff6873adf58eb1bbcd6adb5e5df8a68a8e5",
+      "dirty": true
+    }
+  },
+  "historical_generation": [
+    {
+      "run_id": "evaluation_v1_claimfirst_pilot_3q_v1",
+      "mode": "full_pipeline",
+      "bertscore_f1": 0.685236,
+      "bertscore_query_count": 3,
+      "claim_support_rate": 1.0,
+      "claim_query_count": 3,
+      "hallucination_rate": 0.0,
+      "citation_validity": 1.0,
+      "citation_query_count": 3,
+      "average_end_to_end_latency_ms": 4049.121,
+      "status": "historical_non_comparable"
+    },
+    {
+      "run_id": "evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1",
+      "mode": "full_pipeline",
+      "bertscore_f1": 0.669674,
+      "bertscore_query_count": 74,
+      "claim_support_rate": 1.0,
+      "claim_query_count": 12,
+      "hallucination_rate": 0.0,
+      "citation_validity": 0.162162,
+      "citation_query_count": 74,
+      "average_end_to_end_latency_ms": 8624.3832,
+      "status": "historical_non_comparable"
+    },
+    {
+      "run_id": "evaluation_v1_e2e_full_hybrid_evidencelocal_100q_v1",
+      "mode": "full_pipeline",
+      "bertscore_f1": 0.677404,
+      "bertscore_query_count": 24,
+      "claim_support_rate": 1.0,
+      "claim_query_count": 24,
+      "hallucination_rate": 0.0,
+      "citation_validity": 1.0,
+      "citation_query_count": 24,
+      "average_end_to_end_latency_ms": 8626.33839,
+      "status": "historical_non_comparable"
+    },
+    {
+      "run_id": "evaluation_v1_e2e_full_hybrid_verifierfix3_100q_v1",
+      "mode": "full_pipeline",
+      "bertscore_f1": 0.673289,
+      "bertscore_query_count": 18,
+      "claim_support_rate": 1.0,
+      "claim_query_count": 18,
+      "hallucination_rate": 0.0,
+      "citation_validity": 1.0,
+      "citation_query_count": 18,
+      "average_end_to_end_latency_ms": 8626.10616,
+      "status": "historical_non_comparable"
+    },
+    {
+      "run_id": "evaluation_v1_e2e_full_hybrid_verifierfix4_100q_v1",
+      "mode": "full_pipeline",
+      "bertscore_f1": 0.677249,
+      "bertscore_query_count": 24,
+      "claim_support_rate": 1.0,
+      "claim_query_count": 24,
+      "hallucination_rate": 0.0,
+      "citation_validity": 1.0,
+      "citation_query_count": 24,
+      "average_end_to_end_latency_ms": 8633.06265,
+      "status": "historical_non_comparable"
+    },
+    {
+      "run_id": "evaluation_v1_e2e_lexical_only_100q_v2",
+      "mode": "full_pipeline",
+      "bertscore_f1": 0.704738,
+      "bertscore_query_count": 9,
+      "claim_support_rate": 1.0,
+      "claim_query_count": 4,
+      "hallucination_rate": 0.0,
+      "citation_validity": 0.444444,
+      "citation_query_count": 9,
+      "average_end_to_end_latency_ms": 568.8466,
+      "status": "historical_non_comparable"
+    },
+    {
+      "run_id": "pilot_15q",
+      "mode": "full_pipeline",
+      "bertscore_f1": 0.695662,
+      "bertscore_query_count": 9,
+      "claim_support_rate": 1.0,
+      "claim_query_count": 3,
+      "hallucination_rate": 0.0,
+      "citation_validity": 0.333333,
+      "citation_query_count": 9,
+      "average_end_to_end_latency_ms": 4292.400267,
+      "status": "historical_non_comparable"
+    }
+  ],
+  "unavailable_metrics": {
+    "entity_extraction_precision_recall_f1": "Unavailable: independent entity-extraction ground truth was not completed in the retained evaluation artifacts.",
+    "relation_candidate_recall_triplet_precision_recall_f1": "Unavailable: no independently annotated relation ground truth.",
+    "ragas_context_precision_recall": "Incomplete: the offline RAGAS workflow is implemented and uses the original AHD answers, but the evaluator API quota stopped the full 100-query judge run. Partial scores are not reported as final.",
+    "ragas_faithfulness_answer_relevancy": "Incomplete: evaluator-LLM quota stopped the resumable offline run. No retrieval or generation rerun is required.",
+    "reliability_auroc_auprc_calibration": "Unavailable: no independent binary correctness/reliability labels.",
+    "step08_accuracy": "Unavailable: query correction, classification, phrase extraction, and linking do not yet have a human-confirmed Step 8 gold set."
+  },
+  "methodology_notes": [
+    "All final candidate relevance rows are human-confirmed.",
+    "Blank expansion labels were never converted to zero.",
+    "The supplemental graph was not used.",
+    "The learned reranker was evaluated but remains disabled.",
+    "The retrieval_v2 trigger is deterministic and label-free, but its 44-query candidate-availability cohort was identified during development.",
+    "Historical generation scores are not directly comparable because prompts, retrieval, verification, and evaluated query counts changed."
+  ]
+}

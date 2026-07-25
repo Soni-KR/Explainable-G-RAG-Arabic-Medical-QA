@@ -39,13 +39,17 @@ FROZEN_RUNTIME_FILES = (
     "scripts/run_retrieval_ablation.py",
     "scripts/run_generation_ablation.py",
     "src/config.py",
+    "src/evidence_policy.py",
     "src/models.py",
     "src/neo4j_repository.py",
+    "src/query_relevance.py",
+    "src/step06_build_embedding_indexes.py",
     "src/step08a_normalize_query.py",
     "src/step08b_analyze_query.py",
     "src/step08c_link_entities.py",
     "src/step08d_plan_retrieval.py",
     "src/step09_hybrid_retrieval.py",
+    "src/step09a_qa_corpus.py",
     "src/step10_rerank_subgraph.py",
     "src/step11_build_evidence_context.py",
     "src/step12_generate_grounded_answer.py",
@@ -279,8 +283,15 @@ def build_manifest(
         },
         "thresholds": {
             "semantic_seed_threshold": config.retrieval.semantic_seed_threshold,
-            "claim_support_threshold": 0.55,
-            "claim_weak_threshold": 0.35,
+            "claim_support_threshold": 0.40,
+            "claim_weak_threshold": 0.25,
+            "context_min_score": config.retrieval.context_min_score,
+            "context_min_answer_relevance": config.retrieval.context_min_answer_relevance,
+            "context_min_source_reliability": config.retrieval.context_min_source_reliability,
+            "context_min_intent_support": config.retrieval.context_min_intent_support,
+            "context_min_aggregate_concept_coverage": (
+                config.retrieval.context_min_aggregate_concept_coverage
+            ),
         },
         "top_k": {
             "entity": config.retrieval.entity_top_k,
@@ -307,6 +318,10 @@ def build_manifest(
             "lexical_candidate_k": config.qa_corpus.lexical_candidate_k,
             "semantic_top_k": config.qa_corpus.semantic_top_k,
             "semantic_rerank_enabled": config.qa_corpus.semantic_rerank_enabled,
+            "semantic_fallback_enabled": config.qa_corpus.semantic_fallback_enabled,
+            "semantic_fallback_candidate_k": (
+                config.qa_corpus.semantic_fallback_candidate_k
+            ),
         },
         "git": {
             "commit": git_value("rev-parse", "HEAD"),
@@ -317,7 +332,15 @@ def build_manifest(
             "executable": sys.executable,
             "platform": platform.platform(),
             "packages": package_versions(
-                ("neo4j", "numpy", "sentence-transformers", "torch", "bert-score", "ragas")
+                (
+                    "neo4j",
+                    "numpy",
+                    "sentence-transformers",
+                    "scikit-learn",
+                    "torch",
+                    "bert-score",
+                    "ragas",
+                )
             ),
             "arguments": arguments,
         },

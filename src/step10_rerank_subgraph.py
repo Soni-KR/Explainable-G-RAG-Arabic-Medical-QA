@@ -3,23 +3,16 @@ from __future__ import annotations
 from dataclasses import replace
 
 from src.config import AppConfig, load_final_config
+from src.evidence_policy import source_reliability_prior
 from src.models import HybridRetrievalBundle, RerankedSubgraph, RetrievedEvidence, RetrievedMedicalRelation
+from src.query_relevance import candidate_relevance_features, minimum_candidate_concept_coverage
 from src.step09_hybrid_retrieval import (
-    anatomy_terms,
     lexical_overlap,
     medical_identity_similarity,
     token_set,
 )
 
 
-SOURCE_QUALITY_PRIORS = {
-    "preprocessed_id": 1.0,
-    "preprocessed_source_row": 0.9,
-    "ahd_heldout_safe_corpus": 0.95,
-    "supplemental_dataset_validated": 0.8,
-    "mention_evidence": 0.55,
-    "": 0.65,
-}
 INTENT_CUES = {
     "treatment_request": {"علاج", "دواء", "ادويه", "يستخدم", "تناول", "جراحه"},
     "symptom_request": {"عرض", "اعراض", "علامه", "يشعر", "الم", "حمى"},
@@ -31,7 +24,7 @@ INTENT_CUES = {
 
 
 def evidence_source_prior(item: RetrievedEvidence) -> float:
-    return SOURCE_QUALITY_PRIORS.get(item.source_quality, 0.65)
+    return source_reliability_prior(item.source_quality)
 
 
 def intent_support(primary_intent: str, text: str) -> float:
@@ -75,15 +68,66 @@ def rerank_subgraph(
             if relation.relation_type in set(bundle.plan.preferred_relation_types)
             else (0.45 if not bundle.plan.preferred_relation_types else 0.15)
         )
+        candidate_text = " ".join(
+            [
+                relation.source_name,
+                relation.target_name,
+                relation.evidence,
+                *[
+                    " ".join(
+                        (
+                            str(item.get("question") or ""),
+                            str(item.get("evidence") or ""),
+                            str(item.get("answer") or ""),
+                        )
+                    )
+                    for item in relation.metadata.get("evidence_items", [])
+                ],
+            ]
+        )
+        relevance = candidate_relevance_features(
+            query,
+            candidate_text,
+            source_quality=max(
+                (
+                    str(item.source_quality or "unknown")
+                    for item in supporting
+                ),
+                key=source_reliability_prior,
+                default="unknown",
+            ),
+            intent_support=intent_match,
+            vector_similarity=relation.semantic_support,
+            graph_support=1.0,
+            retrieval_score=relation.hybrid_score,
+            query_medical_phrases=bundle.query_medical_phrases,
+        )
+        concept_coverage = float(relevance["query_concept_coverage"])
+        constraint_coverage = float(relevance["query_constraint_coverage"])
+        anatomy_mismatch = bool(relevance["anatomy_mismatch"])
+        unrelated_condition_mismatch = bool(relevance["unrelated_condition_mismatch"])
+        concept_floor = minimum_candidate_concept_coverage(
+            int(relevance["query_concept_count"])
+        )
+        concept_penalty = (
+            0.25
+            if concept_floor > 0.0 and concept_coverage < concept_floor
+            else 0.0
+        )
         rerank_score = (
-            0.34 * relation.hybrid_score
-            + 0.04 * relation.confidence
-            + 0.08 * relation.semantic_support
-            + 0.22 * query_support
+            0.18 * relation.hybrid_score
+            + 0.03 * relation.confidence
+            + 0.07 * relation.semantic_support
+            + 0.12 * query_support
             + 0.18 * identity_score
-            + 0.08 * source_prior
+            + 0.22 * concept_coverage
+            + 0.08 * constraint_coverage
+            + 0.06 * source_prior
             + 0.06 * intent_match
             - 0.35 * total_penalty
+            - concept_penalty
+            - (0.40 if anatomy_mismatch else 0.0)
+            - (0.35 if unrelated_condition_mismatch else 0.0)
         )
         metadata = dict(relation.metadata)
         metadata.update(
@@ -91,7 +135,12 @@ def rerank_subgraph(
                 "source_quality_prior": round(source_prior, 6),
                 "query_support": round(query_support, 6),
                 "intent_match": round(intent_match, 6),
-                "rank_reason": "identity+query_support+semantic+source_quality+intent-entity_conflicts",
+                **relevance,
+                "concept_floor": round(concept_floor, 6),
+                "rank_reason": (
+                    "query_concept_coverage+identity+intent+constraints+semantic+"
+                    "source_quality-anatomy-unrelated_condition"
+                ),
             }
         )
         reranked_relations.append(
@@ -130,35 +179,54 @@ def rerank_subgraph(
             )
         )
         entity_identity = medical_identity_similarity(query, item.question)
-        medical_phrase_coverage = float(
-            item.metadata.get("medical_phrase_coverage") or 0.0
-        )
-        if item.source_quality == "ahd_heldout_safe_corpus":
-            entity_identity = max(entity_identity, medical_phrase_coverage)
         if relation_support:
             entity_identity = max(entity_identity, medical_identity_similarity(query, item.text))
         evidence_intent_support = intent_support(
             bundle.plan.primary_intent,
             f"{item.question} {item.text}",
         )
-        query_anatomy = anatomy_terms(query)
-        question_anatomy = anatomy_terms(item.question)
-        anatomy_mismatch = bool(
-            query_anatomy and question_anatomy and query_anatomy.isdisjoint(question_anatomy)
+        candidate_text = " ".join((item.question, item.text, item.answer))
+        relevance = candidate_relevance_features(
+            query,
+            candidate_text,
+            source_quality=item.source_quality or "unknown",
+            intent_support=evidence_intent_support,
+            vector_similarity=vector_similarity,
+            graph_support=max(relation_support, qa_support),
+            retrieval_score=original_score,
+            query_medical_phrases=bundle.query_medical_phrases,
+        )
+        concept_coverage = float(relevance["query_concept_coverage"])
+        constraint_coverage = float(relevance["query_constraint_coverage"])
+        anatomy_mismatch = bool(relevance["anatomy_mismatch"])
+        unrelated_condition_mismatch = bool(relevance["unrelated_condition_mismatch"])
+        concept_floor = minimum_candidate_concept_coverage(
+            int(relevance["query_concept_count"])
+        )
+        generic_match = bool(
+            int(relevance["query_concept_count"]) > 0
+            and int(relevance["candidate_concept_count"]) == 0
         )
         answer_relevance = (
-            0.35 * question_relevance
-            + 0.45 * entity_identity
-            + 0.20 * evidence_intent_support
-            - (0.30 if anatomy_mismatch else 0.0)
+            0.25 * question_relevance
+            + 0.25 * entity_identity
+            + 0.30 * concept_coverage
+            + 0.15 * evidence_intent_support
+            + 0.05 * constraint_coverage
+            - (0.45 if anatomy_mismatch else 0.0)
+            - (0.30 if unrelated_condition_mismatch else 0.0)
+            - (0.10 if generic_match else 0.0)
         )
         if relation_support:
             answer_relevance = max(
                 answer_relevance,
-                0.35 * medical_identity_similarity(query, item.text)
-                + 0.25 * evidence_intent_support
-                + 0.20
-                - (0.30 if anatomy_mismatch else 0.0),
+                0.25 * medical_identity_similarity(query, item.text)
+                + 0.30 * concept_coverage
+                + 0.20 * evidence_intent_support
+                + 0.15 * constraint_coverage
+                + 0.10
+                - (0.45 if anatomy_mismatch else 0.0)
+                - (0.30 if unrelated_condition_mismatch else 0.0),
             )
         semantic_anchor = max(question_relevance, passage_relevance, entity_identity)
         direct_question_anchor = bool(
@@ -169,6 +237,11 @@ def rerank_subgraph(
         strong_semantic_match = bool(
             vector_similarity >= config.retrieval.context_semantic_min_score
             and semantic_anchor >= 0.10
+            and (
+                concept_floor == 0.0
+                or concept_coverage >= concept_floor
+            )
+            and not unrelated_condition_mismatch
         )
         if strong_semantic_match and not anatomy_mismatch:
             semantic_answer_relevance = (
@@ -195,13 +268,26 @@ def rerank_subgraph(
             0.15 if direct_qa and question_relevance < 0.05 and passage_relevance > 0.0 else 0.0
         )
         score = (
-            0.20 * item.score
-            + 0.28 * max(0.0, answer_relevance)
-            + 0.18 * query_relevance
-            + 0.16 * evidence_source_prior(item)
-            + 0.08 * max(relation_support, qa_support)
-            + 0.10 * direct_qa
+            0.10 * original_score
+            + 0.24 * max(0.0, answer_relevance)
+            + 0.12 * query_relevance
+            + 0.20 * concept_coverage
+            + 0.08 * constraint_coverage
+            + 0.10 * evidence_source_prior(item)
+            + 0.06 * evidence_intent_support
+            + 0.05 * max(relation_support, qa_support)
+            + 0.05 * direct_qa
             - passage_only_penalty
+            - (
+                0.20
+                if concept_floor > 0.0
+                and concept_coverage < concept_floor
+                and not direct_question_anchor
+                else 0.0
+            )
+            - (0.40 if anatomy_mismatch else 0.0)
+            - (0.30 if unrelated_condition_mismatch else 0.0)
+            - (0.10 if generic_match else 0.0)
         )
         metadata = dict(item.metadata)
         metadata.update(
@@ -210,15 +296,20 @@ def rerank_subgraph(
                 "original_question_relevance": round(original_question_relevance, 6),
                 "passage_relevance": round(passage_relevance, 6),
                 "entity_identity": round(entity_identity, 6),
-                "medical_phrase_coverage": round(medical_phrase_coverage, 6),
                 "intent_support": round(evidence_intent_support, 6),
-                "anatomy_mismatch": anatomy_mismatch,
+                **relevance,
+                "concept_floor": round(concept_floor, 6),
+                "generic_match": generic_match,
                 "retrieval_channel": item.metadata.get("retrieval_channel")
                 or ("vector" if inferred_vector_candidate else "graph"),
                 "vector_similarity": round(vector_similarity, 6),
                 "strong_semantic_match": strong_semantic_match,
                 "direct_question_anchor": direct_question_anchor,
                 "answer_relevance": round(max(0.0, min(1.0, answer_relevance)), 6),
+                "rank_reason": (
+                    "query_concept_coverage+identity+intent+constraints+semantic+"
+                    "source_quality-anatomy-unrelated_condition"
+                ),
             }
         )
         reranked_evidence.append(
@@ -237,6 +328,7 @@ def rerank_subgraph(
     return RerankedSubgraph(
         query=bundle.query,
         primary_intent=bundle.plan.primary_intent,
+        query_medical_phrases=bundle.query_medical_phrases,
         relations=reranked_relations,
         evidence=reranked_evidence,
         warnings=list(dict.fromkeys(warnings)),

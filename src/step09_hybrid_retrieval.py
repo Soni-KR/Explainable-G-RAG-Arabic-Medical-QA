@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from dataclasses import replace
 from difflib import SequenceMatcher
 from typing import Any
 
@@ -102,6 +103,38 @@ def is_generic_entity(text: str) -> bool:
     return normalized in GENERIC_MEDICAL_TERMS or normalized.removeprefix("ال") in {
         item.removeprefix("ال") for item in GENERIC_MEDICAL_TERMS
     }
+
+
+def select_relevance_phrases(
+    medical_phrases: list[Any],
+    primary_intent: str = "",
+) -> list[str]:
+    """Choose query anchors without making every background detail mandatory."""
+    parsed: list[tuple[str, str]] = []
+    for phrase in medical_phrases:
+        if isinstance(phrase, dict):
+            text = str(phrase.get("normalized_form") or phrase.get("surface_form") or "")
+            entity_type = str(phrase.get("entity_type") or "")
+        else:
+            text = str(
+                getattr(phrase, "normalized_form", "")
+                or getattr(phrase, "surface_form", "")
+            )
+            entity_type = str(getattr(phrase, "entity_type", ""))
+        if text and not is_generic_entity(text):
+            parsed.append((text, entity_type))
+    if not parsed:
+        return []
+    if primary_intent in {"medication_safety", "comparison"}:
+        selected = [text for text, _ in parsed]
+    else:
+        clinical_core = [
+            text
+            for text, entity_type in parsed
+            if entity_type in {"DiseaseCondition", "Symptom"}
+        ]
+        selected = clinical_core or [text for text, _ in parsed]
+    return list(dict.fromkeys(selected))
 
 
 def medical_identity_tokens(text: str) -> set[str]:
@@ -464,12 +497,17 @@ def retrieve_hybrid(
 ) -> HybridRetrievalBundle:
     config = config or load_final_config()
     warnings = list(dict.fromkeys([*analysis.warnings, *linking.warnings, *plan.warnings]))
+    query_medical_phrases = select_relevance_phrases(
+        analysis.medical_phrases,
+        analysis.primary_intent,
+    )
     if not plan.use_vector_search and not plan.use_graph_search:
         return HybridRetrievalBundle(
             query=analysis.original_query,
             normalized_query=analysis.normalized_query,
             reformulated_query=analysis.reformulated_query,
             plan=plan,
+            query_medical_phrases=query_medical_phrases,
             warnings=warnings,
         )
 
@@ -490,9 +528,6 @@ def retrieve_hybrid(
                             model,
                             config,
                             top_k=max(plan.qa_top_k, config.qa_corpus.semantic_top_k),
-                            medical_phrases=[
-                                phrase.normalized_form for phrase in analysis.medical_phrases
-                            ],
                         )
                     )
                 except (OSError, RuntimeError, ValueError) as exc:
@@ -532,6 +567,7 @@ def retrieve_hybrid(
             normalized_query=analysis.normalized_query,
             reformulated_query=analysis.reformulated_query,
             plan=plan,
+            query_medical_phrases=query_medical_phrases,
             vector_results=vectors,
             relations=relations,
             evidence=evidence,
@@ -540,3 +576,86 @@ def retrieve_hybrid(
     finally:
         if owns_repository:
             repository.close()
+
+
+def add_semantic_qa_fallback(
+    bundle: HybridRetrievalBundle,
+    config: AppConfig | None = None,
+    model: Any | None = None,
+) -> HybridRetrievalBundle:
+    """Add local E5-reranked QA candidates after ordinary context selection fails."""
+    config = config or load_final_config()
+    if not config.qa_corpus.enabled or not config.qa_corpus.semantic_fallback_enabled:
+        return bundle
+    query_vector, model = embed_query(bundle.reformulated_query, config, model=model)
+    try:
+        fallback_vectors = search_qa_corpus(
+            bundle.query,
+            bundle.reformulated_query,
+            query_vector,
+            model,
+            config,
+            top_k=config.qa_corpus.semantic_top_k,
+            semantic_rerank=True,
+            candidate_k=config.qa_corpus.semantic_fallback_candidate_k,
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        return replace(
+            bundle,
+            warnings=list(
+                dict.fromkeys(
+                    [*bundle.warnings, f"Conditional semantic QA fallback was unavailable: {exc}"]
+                )
+            ),
+        )
+    if not fallback_vectors:
+        return replace(
+            bundle,
+            warnings=list(
+                dict.fromkeys(
+                    [*bundle.warnings, "Conditional semantic QA fallback found no candidates."]
+                )
+            ),
+        )
+    vectors = [*bundle.vector_results, *fallback_vectors]
+    evidence = collect_evidence(
+        bundle.relations,
+        vectors,
+        config.retrieval.context_top_k * 2,
+    )
+    return replace(
+        bundle,
+        vector_results=vectors,
+        evidence=evidence,
+        warnings=list(
+            dict.fromkeys(
+                [
+                    *bundle.warnings,
+                    "Conditional semantic QA fallback ran because ordinary Step 11 context was empty.",
+                ]
+            )
+        ),
+    )
+
+
+def semantic_qa_fallback_eligible(
+    bundle: HybridRetrievalBundle,
+    *,
+    context_has_evidence: bool,
+    config: AppConfig | None = None,
+) -> bool:
+    """Gate expensive local E5 fallback to failed, identifiable medical queries."""
+    config = config or load_final_config()
+    if context_has_evidence:
+        return False
+    if not config.qa_corpus.enabled or not config.qa_corpus.semantic_fallback_enabled:
+        return False
+    if bundle.plan.query_class in {"non_medical", "unclear"}:
+        return False
+    if not bundle.plan.use_vector_search:
+        return False
+    return bool(
+        bundle.plan.primary_entity_ids
+        or bundle.plan.unresolved_phrases
+        or medical_identity_tokens(bundle.reformulated_query)
+    )

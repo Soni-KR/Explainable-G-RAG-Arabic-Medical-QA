@@ -1,0 +1,34 @@
+{
+  "evaluation_name": "frozen_final_run_ahd_reference_v1",
+  "created_at_utc": "2026-07-25T17:43:49.631618+00:00",
+  "frozen_run_id": "full_pipeline_retrieval_v2_targeted_fts_reranked_network_v1",
+  "input_path": "outputs\\evaluation\\generation\\full_pipeline_retrieval_v2_targeted_fts_reranked_network_v1\\full_pipeline.jsonl",
+  "input_sha256": "21e56c46228447ab305fef64ec35a0671439dbd6c83d747254ca99a22614fcd6",
+  "query_count": 100,
+  "reference_type": "original_ahd_answer",
+  "reference_status": "dataset_reference_for_automatic_evaluation; not clinician-adjudicated",
+  "pipeline_rerun": false,
+  "retrieval_rerun": false,
+  "generation_rerun": false,
+  "bertscore_model": "bert-base-multilingual-cased",
+  "ragas_version": "0.4.3",
+  "ragas_evaluator_provider": "groq_openai_compatible",
+  "ragas_evaluator_model": "openai/gpt-oss-20b",
+  "ragas_embedding_model": "intfloat/multilingual-e5-base",
+  "ragas_metrics": [
+    "context_recall",
+    "context_precision",
+    "faithfulness",
+    "answer_relevancy"
+  ],
+  "answer_relevancy_strictness": 1,
+  "runtime": {
+    "python": "3.13.12 (tags/v3.13.12:1cbe481, Feb  3 2026, 18:22:25) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "executable": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\.venv-run\\Scripts\\python.exe",
+    "bert_score": "0.3.13",
+    "ragas": "0.4.3",
+    "sentence_transformers": "3.3.1"
+  },
+  "secrets_recorded": false
+}

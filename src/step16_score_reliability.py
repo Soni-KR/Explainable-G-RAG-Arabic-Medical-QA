@@ -1,9 +1,7 @@
 from __future__ import annotations
 
+from src.evidence_policy import source_reliability_prior
 from src.models import ClaimVerification, EvidenceContextBundle, MitigatedAnswer, ReliabilityResult
-
-
-SOURCE_PRIORS = {"preprocessed_id": 1.0, "preprocessed_source_row": 0.9, "mention_evidence": 0.5, "unknown": 0.6}
 
 
 def safe_average(values: list[float]) -> float:
@@ -45,14 +43,18 @@ def score_reliability(
     cited_ids = {citation for item in supported for citation in item.valid_citations}
     source_reliability = safe_average(
         [
-            SOURCE_PRIORS.get(str(evidence_by_id[item].get("source_quality") or "unknown"), 0.6)
+            source_reliability_prior(
+                str(evidence_by_id[item].get("source_quality") or "unknown")
+            )
             for item in cited_ids
             if item in evidence_by_id
         ]
     )
     answerability_score = {
+        "fully_answerable": 1.0,
         "answerable": 1.0,
-        "partially_answerable": 0.55,
+        "partially_answerable": 0.65,
+        "supported_but_incomplete": 0.35,
         "insufficient_evidence": 0.0,
     }.get(mitigated.answerability, 0.0)
 

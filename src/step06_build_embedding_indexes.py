@@ -33,6 +33,8 @@ import sys
 import time
 # Define an immutable structured record for each embedding document.
 from dataclasses import dataclass
+# Reuse the loaded E5 model when a failed query triggers a second-pass fallback.
+from functools import lru_cache
 # Resolve project-relative source paths portably.
 from pathlib import Path
 # Type dynamic Neo4j rows and generic helper inputs.
@@ -87,6 +89,7 @@ class EmbeddingDocument:
     needs_embedding: bool
 
 
+@lru_cache(maxsize=2)
 def load_model(model_name: str, expected_dimension: int):
     """Load E5 on CUDA when available, otherwise CPU, and validate dimension."""
 

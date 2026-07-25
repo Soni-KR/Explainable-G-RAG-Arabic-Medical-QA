@@ -22,7 +22,11 @@ from src.models import EvidenceContextBundle, ExplainableMedicalAnswer
 from src.neo4j_repository import Neo4jRepository
 from src.step08b_analyze_query import analyze_and_link_query
 from src.step08d_plan_retrieval import build_retrieval_plan
-from src.step09_hybrid_retrieval import retrieve_hybrid
+from src.step09_hybrid_retrieval import (
+    add_semantic_qa_fallback,
+    retrieve_hybrid,
+    semantic_qa_fallback_eligible,
+)
 from src.step10_rerank_subgraph import rerank_subgraph
 from src.step11_build_evidence_context import build_evidence_context
 from src.step12_generate_grounded_answer import generate_grounded_answer
@@ -82,6 +86,29 @@ def run_explainable_pipeline(
         context = build_evidence_context(subgraph, analysis.reformulated_query, config=config)
         record_timing("step11_context_construction", started)
 
+        if semantic_qa_fallback_eligible(
+            retrieval,
+            context_has_evidence=bool(context.evidence_items),
+            config=config,
+        ):
+            started = perf_counter()
+            retrieval = add_semantic_qa_fallback(
+                retrieval,
+                config=config,
+                model=embedding_model,
+            )
+            record_timing("step09_semantic_qa_fallback", started)
+            started = perf_counter()
+            subgraph = rerank_subgraph(retrieval, config=config)
+            record_timing("step10_fallback_reranking", started)
+            started = perf_counter()
+            context = build_evidence_context(
+                subgraph,
+                analysis.reformulated_query,
+                config=config,
+            )
+            record_timing("step11_fallback_context_construction", started)
+
         started = perf_counter()
         generated = generate_grounded_answer(context, config=config)
         record_timing("step12_answer_generation", started)
@@ -95,7 +122,7 @@ def run_explainable_pipeline(
         record_timing("step14_claim_verification", started)
 
         started = perf_counter()
-        mitigated = mitigate_hallucinations(generated, verifications)
+        mitigated = mitigate_hallucinations(generated, verifications, context=context)
         record_timing("step15_hallucination_mitigation", started)
 
         started = perf_counter()
@@ -131,6 +158,22 @@ def run_explainable_pipeline(
         ]
         evidence = [
             item for item in context.evidence_items if item.get("evidence_id") in valid_evidence_ids
+        ]
+        claim_audit = [
+            {
+                "claim": item.claim.claim,
+                "status": item.status,
+                "support_score": item.support_score,
+                "question_relevance": item.question_relevance,
+                "query_concept_coverage": item.query_concept_coverage,
+                "best_evidence_id": item.best_evidence_id,
+                "valid_citations": item.valid_citations,
+                "valid_qa_ids": item.valid_qa_ids,
+                "supporting_relation_ids": item.supporting_relation_ids,
+                "failed_checks": item.failed_checks,
+                "reason": item.reason,
+            }
+            for item in verifications
         ]
         warnings = list(
             dict.fromkeys(
@@ -180,9 +223,12 @@ def run_explainable_pipeline(
             answer=mitigated.answer,
             answerability=mitigated.answerability,
             reliability=reliability,
+            query_coverage=mitigated.query_coverage,
+            missing_query_concepts=mitigated.missing_query_concepts,
             retrieved_entities=linked_entities,
             supporting_relations=supporting_relations,
             evidence=evidence,
+            claim_audit=claim_audit,
             removed_claims=mitigated.removed_claims,
             limitations=mitigated.limitations,
             warnings=warnings,
@@ -206,11 +252,23 @@ def build_context_only(
         analysis, linking = analyze_and_link_query(query, repository=repository, config=config)
         plan = build_retrieval_plan(analysis, linking, config=config)
         retrieval = retrieve_hybrid(analysis, linking, plan, repository=repository, config=config)
-        return build_evidence_context(
+        context = build_evidence_context(
             rerank_subgraph(retrieval, config=config),
             analysis.reformulated_query,
             config=config,
         )
+        if semantic_qa_fallback_eligible(
+            retrieval,
+            context_has_evidence=bool(context.evidence_items),
+            config=config,
+        ):
+            retrieval = add_semantic_qa_fallback(retrieval, config=config)
+            context = build_evidence_context(
+                rerank_subgraph(retrieval, config=config),
+                analysis.reformulated_query,
+                config=config,
+            )
+        return context
     finally:
         if owns_repository:
             repository.close()

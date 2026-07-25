@@ -11,7 +11,9 @@ __pycache__/
 AHD.csv
 AHD_english.csv
 Distribution of Question and Answer per category.csv
-data/
+data/*
+!data/evaluation/
+!data/evaluation/**
 
 # Temporary request files are deleted after successful processing.
 outputs/**/**/*requests*.jsonl

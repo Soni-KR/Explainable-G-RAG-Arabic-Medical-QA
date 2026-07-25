@@ -48,7 +48,12 @@ from src.neo4j_repository import Neo4jRepository
 from src.step06_build_embedding_indexes import load_model
 from src.step08b_analyze_query import analyze_and_link_query
 from src.step08d_plan_retrieval import build_retrieval_plan
-from src.step09_hybrid_retrieval import retrieve_hybrid
+from src.step09_hybrid_retrieval import (
+    add_semantic_qa_fallback,
+    retrieve_hybrid,
+    select_relevance_phrases,
+    semantic_qa_fallback_eligible,
+)
 from src.step10_rerank_subgraph import rerank_subgraph
 from src.step11_build_evidence_context import build_evidence_context
 from src.step12_generate_grounded_answer import (
@@ -198,9 +203,15 @@ def frozen_subgraph(
     rerank: bool = False,
     config: AppConfig | None = None,
 ) -> RerankedSubgraph:
+    analysis_payload = dict(record.get("query_analysis") or {})
+    query_medical_phrases = select_relevance_phrases(
+        list(analysis_payload.get("medical_phrases") or []),
+        primary_intent,
+    )
     saved = RerankedSubgraph(
         query=str(record.get("query") or ""),
         primary_intent=primary_intent,
+        query_medical_phrases=query_medical_phrases,
         relations=[RetrievedMedicalRelation(**item) for item in record.get("relations", [])],
         evidence=[RetrievedEvidence(**item) for item in record.get("evidence", [])],
         warnings=[str(item) for item in record.get("warnings", [])],
@@ -217,6 +228,7 @@ def frozen_subgraph(
         normalized_query=str(record.get("query_analysis", {}).get("normalized_query") or ""),
         reformulated_query=plan.reformulated_query,
         plan=plan,
+        query_medical_phrases=query_medical_phrases,
         relations=saved.relations,
         evidence=saved.evidence,
         warnings=saved.warnings,
@@ -344,6 +356,34 @@ def timed_rag_artifacts(
     context = build_evidence_context(subgraph, analysis.reformulated_query, config=config)
     timings["step11_context_construction"] = round((perf_counter() - started) * 1000.0, 3)
 
+    if semantic_qa_fallback_eligible(
+        retrieval,
+        context_has_evidence=bool(context.evidence_items),
+        config=config,
+    ):
+        started = perf_counter()
+        retrieval = add_semantic_qa_fallback(retrieval, config=config, model=model)
+        timings["step09_semantic_qa_fallback"] = round(
+            (perf_counter() - started) * 1000.0,
+            3,
+        )
+        started = perf_counter()
+        subgraph = rerank_subgraph(retrieval, config=config)
+        timings["step10_fallback_reranking"] = round(
+            (perf_counter() - started) * 1000.0,
+            3,
+        )
+        started = perf_counter()
+        context = build_evidence_context(
+            subgraph,
+            analysis.reformulated_query,
+            config=config,
+        )
+        timings["step11_fallback_context_construction"] = round(
+            (perf_counter() - started) * 1000.0,
+            3,
+        )
+
     started = perf_counter()
     generated = generate_grounded_answer(context, config=config)
     timings["step12_answer_generation"] = round((perf_counter() - started) * 1000.0, 3)
@@ -358,7 +398,7 @@ def timed_rag_artifacts(
     timings["step14_claim_verification"] = round((perf_counter() - started) * 1000.0, 3)
 
     started = perf_counter()
-    mitigated = mitigate_hallucinations(generated, verifications)
+    mitigated = mitigate_hallucinations(generated, verifications, context=context)
     timings["step15_hallucination_mitigation"] = round((perf_counter() - started) * 1000.0, 3)
 
     started = perf_counter()
@@ -410,6 +450,7 @@ def build_record(
         "insufficient_evidence",
         "generation_unavailable",
     }
+    mitigated_payload = dict(raw.get("mitigated") or {})
     metrics = {
         "bertscore": (
             bertscore_f1(answer, gold.reference_answer)
@@ -447,6 +488,10 @@ def build_record(
         "mode": mode,
         "generation_status": generation_status,
         "answerability": answerability,
+        "query_coverage": float(mitigated_payload.get("query_coverage") or 0.0),
+        "missing_query_concepts": list(
+            mitigated_payload.get("missing_query_concepts") or []
+        ),
         "gold": gold.to_dict(),
         "answer": answer,
         "output_claims": [asdict(item) for item in output_claims],
@@ -513,10 +558,30 @@ def aggregate_mode(records: list[dict[str, Any]]) -> dict[str, Any]:
         if citation_rows
         else unavailable("No successful generations were available for citation scoring.")
     )
+    answerability_counts: dict[str, int] = {}
+    for record in records:
+        state = str(record.get("answerability") or "unknown")
+        answerability_counts[state] = answerability_counts.get(state, 0) + 1
+    substantive_coverages = [
+        float(record.get("query_coverage") or 0.0)
+        for record in records
+        if record.get("answerability")
+        not in {"insufficient_evidence", "generation_unavailable", ""}
+    ]
     return {
         "bertscore": bertscore,
         "claim_grounding": grounding,
         "citation_validity": citation,
+        "answer_completeness": {
+            "status": "computed",
+            "answerability_counts": answerability_counts,
+            "average_query_coverage": round(
+                sum(substantive_coverages) / len(substantive_coverages),
+                6,
+            )
+            if substantive_coverages
+            else 0.0,
+        },
         "efficiency": efficiency_metrics([record["timings_ms"] for record in records]),
     }
 
@@ -558,7 +623,7 @@ def run_offline_reaudit(
         verifications = verify_claims(claims, context)
         verification_ms = round((perf_counter() - started) * 1000.0, 3)
         started = perf_counter()
-        mitigated = mitigate_hallucinations(generated, verifications)
+        mitigated = mitigate_hallucinations(generated, verifications, context=context)
         mitigation_ms = round((perf_counter() - started) * 1000.0, 3)
         started = perf_counter()
         reliability = score_reliability(mitigated, verifications, context)
@@ -846,7 +911,7 @@ def run_resumable_frozen_generation(
         verifications = verify_claims(claims, context)
         verification_ms = round((perf_counter() - started) * 1000.0, 3)
         started = perf_counter()
-        mitigated = mitigate_hallucinations(generated, verifications)
+        mitigated = mitigate_hallucinations(generated, verifications, context=context)
         mitigation_ms = round((perf_counter() - started) * 1000.0, 3)
         started = perf_counter()
         reliability = score_reliability(mitigated, verifications, context)
@@ -1001,6 +1066,10 @@ def main() -> int:
         manifest["reaudit"] = {
             "source_run_id": source_manifest.get("run_id", source_directory.name),
             "source_directory": str(source_directory),
+            "source_answer_prompt_version": source_manifest.get("models", {}).get(
+                "answer_prompt_version", "unknown"
+            ),
+            "current_verifier_runtime_prompt_version": config.answer_generation.prompt_version,
             "source_records_sha256": hashlib.sha256(
                 (source_directory / "full_pipeline.jsonl").read_bytes()
             ).hexdigest(),

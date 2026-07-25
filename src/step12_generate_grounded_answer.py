@@ -50,7 +50,7 @@ def fallback_answer(
         answer=(
             "تعذر توليد الإجابة بسبب مشكلة تقنية في خدمة التوليد، رغم توفر أدلة مسترجعة. يُرجى المحاولة لاحقاً."
             if technical_failure
-            else "لا توجد أدلة كافية في الرسم الطبي للإجابة بثقة. يُنصح باستشارة طبيب مختص."
+            else "لا توجد أدلة كافية ضمن المصادر المسترجعة للإجابة بثقة. يُنصح باستشارة طبيب مختص."
         ),
         limitations=[
             "لم تُنشأ إجابة طبية؛ هذا فشل تقني وليس حكماً بعدم كفاية الأدلة."
@@ -76,10 +76,14 @@ def build_messages(context: EvidenceContextBundle) -> list[dict[str, str]]:
         "allowed_evidence_ids": context.allowed_evidence_ids,
         "allowed_qa_ids": context.allowed_qa_ids,
         "rules": [
+            "Work claim-first: select supported atomic claims with citations before composing answer_ar.",
             "Answer in Arabic using only the supplied graph facts and evidence items.",
             "Do not add outside medical knowledge or infer a diagnosis.",
             "Every factual medical claim must cite at least one allowed evidence_id.",
             "Keep claims atomic: separate different organs, tests, treatments, causes, and recommendations into different claims.",
+            "Each claim must contain one predicate and must be fully supported by at least one of its own citations.",
+            "Do not attach every citation to every claim; cite only evidence that directly supports that exact claim.",
+            "Compose answer_ar only from the returned claim_ar values; do not add uncited facts in prose.",
             "Copy QA IDs exactly; never invent citations, QA IDs, ages, durations, doses, or test values.",
             "When evidence is insufficient or conflicting, state that limitation clearly.",
             "Limitations may only state that evidence is incomplete; never name uncited treatments, tests, diseases, doses, or alternatives there.",
@@ -101,7 +105,7 @@ def build_messages(context: EvidenceContextBundle) -> list[dict[str, str]]:
     return [
         {
             "role": "system",
-            "content": "You generate evidence-grounded Arabic medical answers. Return one strict JSON object only.",
+            "content": "You generate claim-first, evidence-grounded Arabic medical answers. Return one strict JSON object only.",
         },
         {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
     ]

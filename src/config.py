@@ -91,6 +91,8 @@ class QACorpusConfig:
     lexical_candidate_k: int = 80
     semantic_top_k: int = 8
     semantic_rerank_enabled: bool = False
+    semantic_fallback_enabled: bool = True
+    semantic_fallback_candidate_k: int = 40
 
 
 @dataclass(frozen=True)
@@ -101,7 +103,11 @@ class RetrievalConfig:
     relation_top_k: int = 30
     context_top_k: int = 12
     context_max_items: int = 6
-    context_min_score: float = 0.52
+    context_min_score: float = 0.40
+    context_min_answer_relevance: float = 0.35
+    context_min_source_reliability: float = 0.55
+    context_min_intent_support: float = 0.50
+    context_min_aggregate_concept_coverage: float = 0.25
     context_semantic_min_score: float = 0.84
     context_relative_margin: float = 0.12
     max_hops: int = 1
@@ -127,7 +133,7 @@ class AnswerGenerationConfig:
     model: str = "openai/gpt-oss-20b"
     reasoning_effort: str = "low"
     temperature: float = 0.0
-    prompt_version: str = "grounded_answer_v2"
+    prompt_version: str = "grounded_claim_first_v3"
     max_attempts: int = 3
     retry_base_seconds: float = 2.0
     retry_max_seconds: float = 30.0
@@ -188,6 +194,14 @@ def load_config() -> AppConfig:
             lexical_candidate_k=_env_int("AHD_QA_LEXICAL_CANDIDATE_K", 80),
             semantic_top_k=_env_int("AHD_QA_SEMANTIC_TOP_K", 8),
             semantic_rerank_enabled=_env_bool("AHD_QA_SEMANTIC_RERANK", False),
+            semantic_fallback_enabled=_env_bool(
+                "AHD_QA_SEMANTIC_FALLBACK_ENABLED",
+                True,
+            ),
+            semantic_fallback_candidate_k=_env_int(
+                "AHD_QA_SEMANTIC_FALLBACK_CANDIDATE_K",
+                40,
+            ),
         ),
         retrieval=RetrievalConfig(
             entity_top_k=_env_int("AHD_ENTITY_TOP_K", 10),
@@ -196,7 +210,23 @@ def load_config() -> AppConfig:
             relation_top_k=_env_int("AHD_RELATION_TOP_K", 30),
             context_top_k=_env_int("AHD_CONTEXT_TOP_K", 12),
             context_max_items=_env_int("AHD_CONTEXT_MAX_ITEMS", 6),
-            context_min_score=_env_float("AHD_CONTEXT_MIN_SCORE", 0.52),
+            context_min_score=_env_float("AHD_CONTEXT_MIN_SCORE", 0.40),
+            context_min_answer_relevance=_env_float(
+                "AHD_CONTEXT_MIN_ANSWER_RELEVANCE",
+                0.35,
+            ),
+            context_min_source_reliability=_env_float(
+                "AHD_CONTEXT_MIN_SOURCE_RELIABILITY",
+                0.55,
+            ),
+            context_min_intent_support=_env_float(
+                "AHD_CONTEXT_MIN_INTENT_SUPPORT",
+                0.50,
+            ),
+            context_min_aggregate_concept_coverage=_env_float(
+                "AHD_CONTEXT_MIN_AGGREGATE_CONCEPT_COVERAGE",
+                0.25,
+            ),
             context_semantic_min_score=_env_float(
                 "AHD_CONTEXT_SEMANTIC_MIN_SCORE",
                 0.84,
@@ -221,7 +251,7 @@ def load_config() -> AppConfig:
             model=_env("ANSWER_GENERATION_MODEL", "openai/gpt-oss-20b"),
             reasoning_effort=_env("ANSWER_GENERATION_REASONING_EFFORT", "low"),
             temperature=_env_float("ANSWER_GENERATION_TEMPERATURE", 0.0),
-            prompt_version=_env("ANSWER_GENERATION_PROMPT_VERSION", "grounded_answer_v2"),
+            prompt_version=_env("ANSWER_GENERATION_PROMPT_VERSION", "grounded_claim_first_v3"),
             max_attempts=_env_int("ANSWER_GENERATION_MAX_ATTEMPTS", 3),
             retry_base_seconds=_env_float("ANSWER_GENERATION_RETRY_BASE_SECONDS", 2.0),
             retry_max_seconds=_env_float("ANSWER_GENERATION_RETRY_MAX_SECONDS", 30.0),

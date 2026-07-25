@@ -270,32 +270,6 @@ def lexical_relevance(query: str, question: str, position: int) -> float:
     return max(0.0, min(1.0, 0.45 + 0.30 * recall + 0.15 * token_f1 + 0.10 * rank_prior))
 
 
-def medical_phrase_matches(
-    phrases: Iterable[str],
-    question: str,
-    answer: str,
-) -> tuple[float, list[str]]:
-    """Measure only explicit Step 8 phrase support in a candidate QA record."""
-    normalized_phrases = list(
-        dict.fromkeys(normalized_text(phrase) for phrase in phrases if normalized_text(phrase))
-    )
-    if not normalized_phrases:
-        return 0.0, []
-    candidate_tokens = TOKEN_RE.findall(
-        f"{normalized_text(question)} {normalized_text(answer)}"
-    )
-    matched: list[str] = []
-    for phrase in normalized_phrases:
-        phrase_tokens = TOKEN_RE.findall(phrase)
-        phrase_length = len(phrase_tokens)
-        if phrase_length and any(
-            candidate_tokens[index : index + phrase_length] == phrase_tokens
-            for index in range(len(candidate_tokens) - phrase_length + 1)
-        ):
-            matched.append(phrase)
-    return len(matched) / len(normalized_phrases), matched
-
-
 def lexical_candidates(index_path: Path, query: str, limit: int) -> list[dict[str, Any]]:
     terms = fts_terms(query)
     if not terms or not index_path.exists():
@@ -329,7 +303,8 @@ def search_qa_corpus(
     config: AppConfig,
     *,
     top_k: int | None = None,
-    medical_phrases: Iterable[str] = (),
+    semantic_rerank: bool | None = None,
+    candidate_k: int | None = None,
 ) -> list[VectorSearchResult]:
     """Shortlist with FTS5, then rerank locally with the configured E5 model."""
     corpus = config.qa_corpus
@@ -343,12 +318,21 @@ def search_qa_corpus(
             f"configured={corpus.corpus_version}, indexed={metadata.get('corpus_version')}"
         )
     lexical_query = " ".join(dict.fromkeys((original_query, reformulated_query)))
-    candidates = lexical_candidates(index_path, lexical_query, corpus.lexical_candidate_k)
+    use_semantic_rerank = (
+        corpus.semantic_rerank_enabled
+        if semantic_rerank is None
+        else bool(semantic_rerank)
+    )
+    candidates = lexical_candidates(
+        index_path,
+        lexical_query,
+        max(1, candidate_k or corpus.lexical_candidate_k),
+    )
     if not candidates:
         return []
 
-    scored: list[tuple[float, int, dict[str, Any], float, float, list[str]]] = []
-    if corpus.semantic_rerank_enabled:
+    scored: list[tuple[float, int, dict[str, Any]]] = []
+    if use_semantic_rerank:
         passages = [
             "passage: " + " ".join((row["question"], row["answer"], row["category"])).strip()
             for row in candidates
@@ -358,55 +342,17 @@ def search_qa_corpus(
             similarity = float(
                 sum(float(a) * float(b) for a, b in zip(query_embedding, vector, strict=True))
             )
-            phrase_coverage, matched_phrases = medical_phrase_matches(
-                medical_phrases,
-                str(row["question"]),
-                str(row["answer"]),
-            )
-            lexical_score = lexical_relevance(lexical_query, str(row["question"]), index)
-            combined_score = 0.80 * max(0.0, min(1.0, similarity)) + 0.20 * phrase_coverage
-            scored.append(
-                (
-                    combined_score,
-                    index,
-                    row,
-                    lexical_score,
-                    phrase_coverage,
-                    matched_phrases,
-                )
-            )
+            scored.append((max(0.0, min(1.0, similarity)), index, row))
     else:
         for index, row in enumerate(candidates, start=1):
-            lexical_score = lexical_relevance(lexical_query, str(row["question"]), index)
-            phrase_coverage, matched_phrases = medical_phrase_matches(
-                medical_phrases,
-                str(row["question"]),
-                str(row["answer"]),
-            )
-            combined_score = 0.75 * lexical_score + 0.25 * phrase_coverage
-            scored.append(
-                (
-                    combined_score,
-                    index,
-                    row,
-                    lexical_score,
-                    phrase_coverage,
-                    matched_phrases,
-                )
-            )
+            scored.append((lexical_relevance(lexical_query, str(row["question"]), index), index, row))
 
     result_limit = max(1, top_k or corpus.semantic_top_k)
     results: list[VectorSearchResult] = []
-    for (
-        score,
-        lexical_position,
-        row,
-        lexical_score,
-        phrase_coverage,
-        matched_phrases,
-    ) in sorted(scored, key=lambda item: item[0], reverse=True)[:result_limit]:
+    for score, lexical_position, row in sorted(scored, key=lambda item: item[0], reverse=True)[:result_limit]:
         qa_id = str(row["qa_id"])
-        channel = "fts_e5_qa" if corpus.semantic_rerank_enabled else "fts_qa"
+        channel = "fts_e5_qa" if use_semantic_rerank else "fts_qa"
+        lexical_score = lexical_relevance(lexical_query, str(row["question"]), lexical_position)
         results.append(
             VectorSearchResult(
                 result_id=qa_id,
@@ -422,12 +368,10 @@ def search_qa_corpus(
                     "source_row_number": int(row["source_row_number"]),
                     "source_quality": "ahd_heldout_safe_corpus",
                     "retrieval_channel": channel,
-                    "vector_similarity": score if corpus.semantic_rerank_enabled else 0.0,
+                    "vector_similarity": score if use_semantic_rerank else 0.0,
                     "lexical_score": lexical_score,
                     "lexical_position": lexical_position,
                     "lexical_rank": float(row["lexical_rank"]),
-                    "medical_phrase_coverage": phrase_coverage,
-                    "matched_medical_phrases": matched_phrases,
                     "corpus_version": corpus.corpus_version,
                 },
             )

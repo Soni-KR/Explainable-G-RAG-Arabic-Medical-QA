@@ -1,0 +1,84 @@
+{
+  "annotation_file": "data\\evaluation\\candidate_relevance_combined_pool_v2_replay_ready.csv",
+  "retrieval_file": "outputs\\evaluation\\retrieval\\evaluation_v1_retrieval_fullhybrid_qacorpus_identityfix_100q_v1\\full_hybrid.jsonl",
+  "candidate_pool": "top_5_evidence_and_top_3_available_relations",
+  "evaluation_method": "query_grouped_out_of_fold_scores_then_unchanged_step11",
+  "folds": 5,
+  "baseline": {
+    "queries": 99,
+    "queries_with_context": 63,
+    "queries_with_useful_context": 52,
+    "queries_with_direct_context": 26,
+    "all_zero_queries_with_context": 8,
+    "selected_candidates": 192,
+    "selected_label_counts": {
+      "0": 92,
+      "1": 65,
+      "2": 35
+    },
+    "useful_candidate_precision": 0.520833,
+    "direct_candidate_precision": 0.182292,
+    "direct_available_queries": 49,
+    "direct_retained_queries": 26,
+    "direct_retention_rate": 0.530612,
+    "mean_selected_candidates": 1.939394
+  },
+  "blend_25_percent_model": {
+    "queries": 99,
+    "queries_with_context": 62,
+    "queries_with_useful_context": 52,
+    "queries_with_direct_context": 26,
+    "all_zero_queries_with_context": 8,
+    "selected_candidates": 186,
+    "selected_label_counts": {
+      "0": 87,
+      "1": 64,
+      "2": 35
+    },
+    "useful_candidate_precision": 0.532258,
+    "direct_candidate_precision": 0.188172,
+    "direct_available_queries": 49,
+    "direct_retained_queries": 26,
+    "direct_retention_rate": 0.530612,
+    "mean_selected_candidates": 1.878788
+  },
+  "blend_50_percent_model": {
+    "queries": 99,
+    "queries_with_context": 60,
+    "queries_with_useful_context": 50,
+    "queries_with_direct_context": 25,
+    "all_zero_queries_with_context": 8,
+    "selected_candidates": 171,
+    "selected_label_counts": {
+      "0": 77,
+      "1": 61,
+      "2": 33
+    },
+    "useful_candidate_precision": 0.549708,
+    "direct_candidate_precision": 0.192982,
+    "direct_available_queries": 49,
+    "direct_retained_queries": 25,
+    "direct_retention_rate": 0.510204,
+    "mean_selected_candidates": 1.727273
+  },
+  "two_stage_out_of_fold": {
+    "queries": 99,
+    "queries_with_context": 58,
+    "queries_with_useful_context": 47,
+    "queries_with_direct_context": 24,
+    "all_zero_queries_with_context": 7,
+    "selected_candidates": 153,
+    "selected_label_counts": {
+      "0": 70,
+      "1": 55,
+      "2": 28
+    },
+    "useful_candidate_precision": 0.542484,
+    "direct_candidate_precision": 0.183007,
+    "direct_available_queries": 49,
+    "direct_retained_queries": 24,
+    "direct_retention_rate": 0.489796,
+    "mean_selected_candidates": 1.545455
+  },
+  "activation": "disabled_after_replay_modest_gain"
+}

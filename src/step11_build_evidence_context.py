@@ -4,6 +4,13 @@ from collections import defaultdict
 
 from src.config import AppConfig, load_final_config
 from src.models import EvidenceContextBundle, RerankedSubgraph, RetrievedEvidence
+from src.query_relevance import (
+    candidate_relevance_features,
+    matched_query_concepts,
+    minimum_candidate_concept_coverage,
+    query_concept_coverage,
+)
+from src.step08a_normalize_query import normalize_query
 from src.step09_hybrid_retrieval import lexical_overlap
 
 
@@ -53,25 +60,26 @@ def has_direct_question_anchor(item: RetrievedEvidence) -> bool:
     )
 
 
-def has_strong_direct_qa_support(item: RetrievedEvidence) -> bool:
-    """Admit a trusted direct QA only when its medical identity is explicit."""
-    if item.source_quality not in {
-        "ahd_heldout_safe_corpus",
-        "preprocessed_id",
-        "preprocessed_source_row",
-    }:
-        return False
-    if item.metadata.get("anatomy_mismatch"):
-        return False
-    answer_relevance = float(item.metadata.get("answer_relevance") or 0.0)
-    question_relevance = float(item.metadata.get("question_relevance") or 0.0)
-    entity_identity = float(item.metadata.get("entity_identity") or 0.0)
-    phrase_coverage = float(item.metadata.get("medical_phrase_coverage") or 0.0)
-    return bool(
-        answer_relevance >= 0.45
-        and question_relevance >= 0.30
-        and (phrase_coverage >= 0.99 or entity_identity >= 0.80)
+def item_relevance_features(
+    item: RetrievedEvidence,
+    query: str,
+    query_medical_phrases: list[str] | None = None,
+) -> dict[str, object]:
+    """Use Step 10 features when present and deterministically fill older artifacts."""
+    computed = candidate_relevance_features(
+        query,
+        " ".join((item.question, item.text, item.answer)),
+        source_quality=item.source_quality or "unknown",
+        intent_support=float(item.metadata.get("intent_support") or 0.0),
+        vector_similarity=float(item.metadata.get("vector_similarity") or 0.0),
+        graph_support=1.0 if item.relation_ids else 0.0,
+        retrieval_score=float(item.score or 0.0),
+        query_medical_phrases=query_medical_phrases,
     )
+    for key in computed:
+        if key in item.metadata:
+            computed[key] = item.metadata[key]
+    return computed
 
 
 def select_context_evidence(
@@ -79,109 +87,139 @@ def select_context_evidence(
     query: str,
     config: AppConfig,
 ) -> list[RetrievedEvidence]:
-    """Keep a small, score-relative context instead of filling a fixed quota."""
+    """Keep only candidates that pass absolute clinical-relevance gates."""
     if not subgraph.evidence:
         return []
 
-    best_answer_relevance = max(
-        (item_answer_relevance(item, query) for item in subgraph.evidence),
-        default=0.0,
-    )
-    if best_answer_relevance < 0.35:
-        return []
-    answer_relevance_floor = max(0.35, best_answer_relevance - 0.10)
-    best_entity_identity = max(
-        (float(item.metadata.get("entity_identity") or 0.0) for item in subgraph.evidence),
-        default=0.0,
-    )
-    entity_identity_floor = best_entity_identity - 0.15 if best_entity_identity >= 0.85 else 0.0
-    ranked = sorted(
-        (
-            item
-            for item in subgraph.evidence
-            if item_answer_relevance(item, query) >= answer_relevance_floor
-            and (
-                float(item.metadata.get("entity_identity") or 0.0) >= entity_identity_floor
-                or has_direct_question_anchor(item)
-                or has_strong_direct_qa_support(item)
-            )
-            and not (
-                subgraph.primary_intent in INTENTS_REQUIRING_DIRECT_SUPPORT
-                and float(item.metadata.get("intent_support") or 0.0) <= 0.0
-                and not item.relation_ids
-                and not has_direct_question_anchor(item)
-                and not has_strong_direct_qa_support(item)
-            )
+    ranked: list[RetrievedEvidence] = []
+    for item in subgraph.evidence:
+        features = item_relevance_features(item, query, subgraph.query_medical_phrases)
+        answer_relevance = item_answer_relevance(item, query)
+        direct_anchor = has_direct_question_anchor(item)
+        semantic_support = has_strong_semantic_support(item, config)
+        concept_count = int(features["query_concept_count"])
+        concept_coverage = float(features["query_concept_coverage"])
+        concept_floor = minimum_candidate_concept_coverage(concept_count)
+        intent_score = float(features["intent_support"])
+        if bool(features["anatomy_mismatch"]):
+            continue
+        if bool(features["unrelated_condition_mismatch"]):
+            continue
+        if float(features["source_reliability"]) < config.retrieval.context_min_source_reliability:
+            continue
+        if (
+            answer_relevance < config.retrieval.context_min_answer_relevance
+            and not direct_anchor
+            and not semantic_support
+        ):
+            continue
+        if (
+            item.score < config.retrieval.context_min_score
+            and not direct_anchor
+            and not semantic_support
+        ):
+            continue
+        if concept_floor > 0.0 and concept_coverage < concept_floor and not direct_anchor:
+            continue
+        if (
+            subgraph.primary_intent in INTENTS_REQUIRING_DIRECT_SUPPORT
+            and intent_score < config.retrieval.context_min_intent_support
+            and not direct_anchor
+        ):
+            continue
+        ranked.append(item)
+
+    ranked.sort(
+        key=lambda item: (
+            float(
+                item_relevance_features(
+                    item,
+                    query,
+                    subgraph.query_medical_phrases,
+                )["query_concept_coverage"]
+            ),
+            item_answer_relevance(item, query),
+            item.score,
         ),
-        key=lambda item: item.score,
         reverse=True,
     )
     if not ranked:
         return []
-    top_score = ranked[0].score
-    score_floor = max(
-        config.retrieval.context_min_score,
-        top_score - config.retrieval.context_relative_margin,
-    )
+
     selected: list[RetrievedEvidence] = []
     per_qa: dict[str, int] = defaultdict(int)
+    seen_content: set[tuple[str, str, str]] = set()
+    covered_concepts: set[str] = set()
+    top_score = ranked[0].score
     for item in ranked:
         strong_semantic_support = has_strong_semantic_support(item, config)
         direct_question_anchor = has_direct_question_anchor(item)
-        strong_direct_qa_support = has_strong_direct_qa_support(item)
-        if (
-            item.score < score_floor
-            and not strong_semantic_support
-            and not direct_question_anchor
-            and not strong_direct_qa_support
-        ):
-            continue
         question_match = lexical_overlap(query, item.question)
         passage_match = lexical_overlap(query, f"{item.text} {item.answer}")
-        answer_relevance = item_answer_relevance(item, query)
-        if answer_relevance < answer_relevance_floor:
-            continue
         if (
             max(question_match, passage_match) < 0.05
             and not strong_semantic_support
             and not direct_question_anchor
-            and not strong_direct_qa_support
         ):
+            continue
+        item_text = " ".join((item.question, item.text, item.answer))
+        item_concepts = matched_query_concepts(
+            query,
+            item_text,
+            subgraph.query_medical_phrases,
+        )
+        adds_new_concept = bool(item_concepts - covered_concepts)
+        if (
+            item.score < top_score - config.retrieval.context_relative_margin
+            and not adds_new_concept
+            and not strong_semantic_support
+            and not direct_question_anchor
+        ):
+            continue
+        content_key = (
+            normalize_query(item.question).normalized_query,
+            normalize_query(item.text).normalized_query,
+            normalize_query(item.answer).normalized_query,
+        )
+        if content_key in seen_content:
             continue
         qa_key = item.qa_id or item.source_id
         if qa_key and per_qa[qa_key] >= 2:
             continue
         selected.append(item)
+        seen_content.add(content_key)
+        covered_concepts.update(item_concepts)
         if qa_key:
             per_qa[qa_key] += 1
         if len(selected) >= config.retrieval.context_max_items:
             break
 
-    # Preserve one relation-backed passage when it is reasonably relevant. This
-    # prevents a single high-scoring vector passage from erasing the useful graph
-    # channel while still avoiding fixed-quota context padding.
-    if not any(item.relation_ids for item in selected):
-        relation_relevance_floor = max(0.35, answer_relevance_floor - 0.25)
-        for item in sorted(subgraph.evidence, key=lambda value: value.score, reverse=True):
-            if not item.relation_ids or item in selected:
-                continue
-            answer_relevance = item_answer_relevance(item, query)
-            if (
-                item.score >= config.retrieval.context_min_score * 0.8
-                and answer_relevance >= relation_relevance_floor
-                and float(item.metadata.get("entity_identity") or 0.0) >= entity_identity_floor
-                and not (
-                    subgraph.primary_intent in INTENTS_REQUIRING_DIRECT_SUPPORT
-                    and float(item.metadata.get("intent_support") or 0.0) <= 0.0
-                    and not has_direct_question_anchor(item)
-                )
-            ):
-                selected.append(item)
-                break
-
-    return sorted(selected, key=lambda item: item.score, reverse=True)[
-        : config.retrieval.context_max_items
-    ]
+    query_has_concepts = bool(
+        selected
+        and int(
+            item_relevance_features(
+                selected[0],
+                query,
+                subgraph.query_medical_phrases,
+            )["query_concept_count"]
+        )
+        > 0
+    )
+    combined_candidate_text = " ".join(
+        " ".join((item.question, item.text, item.answer)) for item in selected
+    )
+    aggregate_coverage = query_concept_coverage(
+        query,
+        combined_candidate_text,
+        subgraph.query_medical_phrases,
+    )
+    if (
+        query_has_concepts
+        and aggregate_coverage < config.retrieval.context_min_aggregate_concept_coverage
+        and not any(has_direct_question_anchor(item) for item in selected)
+    ):
+        return []
+    return selected[: config.retrieval.context_max_items]
 
 
 def build_evidence_context(
@@ -223,6 +261,11 @@ def build_evidence_context(
     allowed_qa_ids: list[str] = []
     for index, evidence in enumerate(selected_evidence, start=1):
         display_id = f"E{index}"
+        relevance = item_relevance_features(
+            evidence,
+            reformulated_query,
+            subgraph.query_medical_phrases,
+        )
         relation_ids = [
             relation_id_map[item]
             for item in evidence.relation_ids
@@ -242,6 +285,15 @@ def build_evidence_context(
                 "answer_relevance": evidence.metadata.get("answer_relevance", 0.0),
                 "entity_identity": evidence.metadata.get("entity_identity", 0.0),
                 "intent_support": evidence.metadata.get("intent_support", 0.0),
+                "query_concept_coverage": relevance["query_concept_coverage"],
+                "query_constraint_coverage": relevance["query_constraint_coverage"],
+                "source_reliability": relevance["source_reliability"],
+                "matched_query_concepts": relevance["matched_query_concepts"],
+                "missing_query_concepts": relevance["missing_query_concepts"],
+                "anatomy_mismatch": relevance["anatomy_mismatch"],
+                "unrelated_condition_mismatch": relevance[
+                    "unrelated_condition_mismatch"
+                ],
                 "vector_similarity": evidence.metadata.get("vector_similarity", 0.0),
                 "original_question_relevance": evidence.metadata.get(
                     "original_question_relevance", 0.0
@@ -270,6 +322,7 @@ def build_evidence_context(
         query=subgraph.query,
         reformulated_query=reformulated_query,
         primary_intent=subgraph.primary_intent,
+        query_medical_phrases=subgraph.query_medical_phrases,
         graph_facts=graph_facts,
         evidence_items=evidence_items,
         allowed_evidence_ids=[item["evidence_id"] for item in evidence_items],

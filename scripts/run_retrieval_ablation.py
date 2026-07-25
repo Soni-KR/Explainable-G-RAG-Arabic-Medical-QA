@@ -46,6 +46,7 @@ from src.step09_hybrid_retrieval import (
     retrieve_hybrid,
     score_relations,
     seed_scores,
+    select_relevance_phrases,
     token_set,
     vector_results,
 )
@@ -64,6 +65,13 @@ MODES = (
 
 def stable_unique(values: list[str]) -> list[str]:
     return list(dict.fromkeys(value for value in values if value))
+
+
+def analysis_medical_phrases(analysis: Any) -> list[str]:
+    return select_relevance_phrases(
+        analysis.medical_phrases,
+        analysis.primary_intent,
+    )
 
 
 def lexical_score(query: str, document: str) -> float:
@@ -197,6 +205,8 @@ def graph_bundle(
         seeds,
         plan.preferred_relation_types,
         [],
+        analysis=analysis,
+        low_specificity_entity_ids=plan.low_specificity_entity_ids,
     )[: config.retrieval.relation_top_k]
     evidence = collect_evidence(relations, [], config.retrieval.context_top_k * 2)
     return HybridRetrievalBundle(
@@ -204,6 +214,7 @@ def graph_bundle(
         normalized_query=analysis.normalized_query,
         reformulated_query=analysis.reformulated_query,
         plan=plan,
+        query_medical_phrases=analysis_medical_phrases(analysis),
         relations=relations,
         evidence=evidence,
         warnings=[] if seeds else ["Graph-only mode had no deterministically linked seed entity."],
@@ -228,9 +239,6 @@ def vector_bundle(
                 model,
                 config,
                 top_k=max(plan.qa_top_k, config.qa_corpus.semantic_top_k),
-                medical_phrases=[
-                    phrase.normalized_form for phrase in analysis.medical_phrases
-                ],
             )
         )
     evidence = collect_evidence([], vectors, config.retrieval.context_top_k * 2)
@@ -239,6 +247,7 @@ def vector_bundle(
         normalized_query=analysis.normalized_query,
         reformulated_query=analysis.reformulated_query,
         plan=plan,
+        query_medical_phrases=analysis_medical_phrases(analysis),
         vector_results=vectors,
         evidence=evidence,
     )
@@ -251,6 +260,7 @@ def lexical_bundle(analysis: Any, plan: Any, corpus: dict[str, list[dict[str, An
         normalized_query=analysis.normalized_query,
         reformulated_query=analysis.reformulated_query,
         plan=plan,
+        query_medical_phrases=analysis_medical_phrases(analysis),
         vector_results=results,
         evidence=collect_evidence([], results, config.retrieval.context_top_k * 2),
     )
@@ -259,6 +269,8 @@ def lexical_bundle(analysis: Any, plan: Any, corpus: dict[str, list[dict[str, An
 def unreranked_subgraph(bundle: HybridRetrievalBundle, config: AppConfig) -> RerankedSubgraph:
     return RerankedSubgraph(
         query=bundle.query,
+        primary_intent=bundle.plan.primary_intent,
+        query_medical_phrases=bundle.query_medical_phrases,
         relations=bundle.relations[: min(config.retrieval.relation_top_k, 12)],
         evidence=bundle.evidence[: config.retrieval.context_top_k],
         warnings=bundle.warnings,

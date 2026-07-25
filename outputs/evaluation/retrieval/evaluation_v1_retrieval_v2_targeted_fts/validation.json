@@ -1,0 +1,25 @@
+{
+  "status": "ok",
+  "checks": {
+    "artifact_has_100_queries": true,
+    "all_44_target_queries_processed": true,
+    "target_cohort_matches_partial_only_queries": true,
+    "only_partial_only_queries_expanded": true,
+    "no_all_zero_queries_expanded": true,
+    "raw_candidate_count_is_483": true,
+    "builder_did_not_read_human_labels": true,
+    "artifact_contains_no_relevance_fields": true,
+    "supplemental_graph_disabled": true,
+    "learned_reranker_disabled": true,
+    "every_query_has_final_step11_context": true,
+    "decisions_cover_every_query": true
+  },
+  "failures": [],
+  "queries": 100,
+  "target_queries": 44,
+  "triggered_queries": 27,
+  "all_zero_queries": 18,
+  "raw_expansion_candidates": 483,
+  "labels_used_for_artifact_construction": false,
+  "labels_used_for_postbuild_cohort_audit": true
+}

@@ -3,6 +3,11 @@ from __future__ import annotations
 import re
 
 from src.models import AnswerClaim, ClaimVerification, EvidenceContextBundle
+from src.query_relevance import (
+    minimum_candidate_concept_coverage,
+    query_concept_coverage,
+    query_concepts,
+)
 from src.step08a_normalize_query import normalize_query
 from src.step09_hybrid_retrieval import anatomy_terms
 
@@ -183,10 +188,9 @@ def verify_claims(
     verifications: list[ClaimVerification] = []
     for claim in claims:
         valid_citations = [item for item in claim.citations if item in evidence_by_id]
-        valid_qa_ids = [item for item in claim.source_qa_ids if item in allowed_qa_ids]
-        cited_rows = [evidence_by_id[item] for item in valid_citations]
-        scored = []
-        for row in cited_rows:
+        pair_results: list[dict[str, object]] = []
+        for citation_id in valid_citations:
+            row = evidence_by_id[citation_id]
             relation_facts = [
                 facts_by_id.get(str(relation_id), "")
                 for relation_id in row.get("relation_ids", [])
@@ -204,98 +208,191 @@ def verify_claims(
                 for text in text_fields
                 for segment in evidence_candidates(text, claim.claim)
             ]
+            segment_results: list[tuple[float, bool, list[str]]] = []
             for segment in segments:
                 score = support_score(claim.claim, segment)
-                constraints_ok = (
-                    negation_matches(claim.claim, segment)
-                    and numbers_supported(claim.claim, segment)
-                    and anatomy_supported(claim.claim, segment)
-                    and recommendation_matches(claim.claim, segment)
+                failed_checks: list[str] = []
+                if not negation_matches(claim.claim, segment):
+                    failed_checks.append("negation_mismatch")
+                if not numbers_supported(claim.claim, segment):
+                    failed_checks.append("number_mismatch")
+                if not anatomy_supported(claim.claim, segment):
+                    failed_checks.append("anatomy_mismatch")
+                if not recommendation_matches(claim.claim, segment):
+                    failed_checks.append("recommendation_not_supported")
+                segment_results.append((score, not failed_checks, failed_checks))
+            segment_results.sort(key=lambda item: (item[1], item[0]), reverse=True)
+            best_score, constraints_ok, failed_checks = (
+                segment_results[0]
+                if segment_results
+                else (0.0, False, ["no_evidence_segment"])
+            )
+            direct_question_relevance = question_relevance_score(
+                claim.claim,
+                context.reformulated_query or context.query,
+            )
+            context_relevance = float(row.get("answer_relevance") or 0.0)
+            entity_identity = float(row.get("entity_identity") or 0.0)
+            vector_similarity = float(row.get("vector_similarity") or 0.0)
+            query_text = context.reformulated_query or context.query
+            concept_count = len(
+                query_concepts(query_text, context.query_medical_phrases)
+            )
+            claim_concept_coverage = query_concept_coverage(
+                query_text,
+                claim.claim,
+                context.query_medical_phrases,
+            )
+            cited_concept_coverage = float(
+                row.get("query_concept_coverage")
+                if row.get("query_concept_coverage") is not None
+                else query_concept_coverage(
+                    query_text,
+                    " ".join(
+                        (
+                            str(row.get("source_question") or ""),
+                            str(row.get("evidence") or ""),
+                            str(row.get("source_answer") or ""),
+                        )
+                    ),
+                    context.query_medical_phrases,
                 )
-                scored.append((score, constraints_ok, row))
-        scored.sort(key=lambda item: (item[1], item[0]), reverse=True)
-        best_score = scored[0][0] if scored else 0.0
-        best_constraints = scored[0][1] if scored else False
-        direct_question_relevance = question_relevance_score(
-            claim.claim,
-            context.reformulated_query or context.query,
+            )
+            concept_floor = minimum_candidate_concept_coverage(concept_count)
+            query_scope_relevant = bool(
+                concept_floor == 0.0
+                or claim_concept_coverage >= concept_floor
+                or (
+                    cited_concept_coverage >= concept_floor
+                    and context_relevance >= 0.75
+                )
+            )
+            cited_intent_support = (
+                float(row.get("intent_support") or 0.0)
+                if "intent_support" in row
+                else None
+            )
+            question_relevance = max(direct_question_relevance, context_relevance)
+            intent_relevance = claim_addresses_intent(
+                claim.claim,
+                context.primary_intent,
+                context_relevance,
+                cited_intent_support,
+            )
+            high_trust_paraphrase = bool(
+                context_relevance >= 0.80
+                and entity_identity >= 0.75
+                and vector_similarity >= 0.84
+                and (cited_intent_support is None or cited_intent_support >= 0.50)
+            )
+            if question_relevance < 0.25:
+                failed_checks.append("query_relevance_below_threshold")
+            if not query_scope_relevant:
+                failed_checks.append("claim_query_concept_mismatch")
+            if not intent_relevance:
+                failed_checks.append("intent_mismatch")
+            supported = bool(
+                constraints_ok
+                and (
+                    best_score >= support_threshold
+                    or (best_score >= weak_threshold and high_trust_paraphrase)
+                )
+                and question_relevance >= 0.25
+                and query_scope_relevant
+                and intent_relevance
+            )
+            weakly_supported = bool(
+                not supported
+                and constraints_ok
+                and best_score >= weak_threshold
+                and question_relevance >= 0.15
+                and query_scope_relevant
+                and intent_relevance
+            )
+            if best_score < weak_threshold:
+                failed_checks.append("support_below_weak_threshold")
+            pair_results.append(
+                {
+                    "citation_id": citation_id,
+                    "row": row,
+                    "status": (
+                        "supported"
+                        if supported
+                        else "weakly_supported"
+                        if weakly_supported
+                        else "unsupported"
+                    ),
+                    "support_score": best_score,
+                    "question_relevance": question_relevance,
+                    "query_concept_coverage": claim_concept_coverage,
+                    "cited_query_concept_coverage": cited_concept_coverage,
+                    "failed_checks": list(dict.fromkeys(failed_checks)),
+                }
+            )
+
+        status_order = {"unsupported": 0, "weakly_supported": 1, "supported": 2}
+        pair_results.sort(
+            key=lambda item: (
+                status_order[str(item["status"])],
+                float(item["support_score"]),
+                float(item["question_relevance"]),
+                float(item["query_concept_coverage"]),
+            ),
+            reverse=True,
         )
-        # Step 10/11 already evaluates whether each cited passage answers the
-        # query using entity identity, anatomy and intent.  Reuse that vetted
-        # signal so a medically relevant paraphrase is not rejected merely
-        # because it shares few literal words with a long patient question.
-        cited_context_relevance = max(
-            (float(row.get("answer_relevance") or 0.0) for row in cited_rows),
-            default=0.0,
-        )
-        cited_entity_identity = max(
-            (float(row.get("entity_identity") or 0.0) for row in cited_rows),
-            default=0.0,
-        )
-        cited_vector_similarity = max(
-            (float(row.get("vector_similarity") or 0.0) for row in cited_rows),
-            default=0.0,
-        )
-        intent_support_values = [
-            float(row.get("intent_support") or 0.0)
-            for row in cited_rows
-            if "intent_support" in row
+        best_pair = pair_results[0] if pair_results else None
+        status = str(best_pair["status"]) if best_pair else "unsupported"
+        accepted_pairs = [item for item in pair_results if item["status"] == status]
+        accepted_pairs = accepted_pairs if status != "unsupported" else []
+        accepted_citations = [str(item["citation_id"]) for item in accepted_pairs]
+        accepted_rows = [item["row"] for item in accepted_pairs]
+        accepted_qa_ids = {
+            str(row.get("qa_id") or "")
+            for row in accepted_rows
+            if str(row.get("qa_id") or "") in allowed_qa_ids
+        }
+        valid_qa_ids = [
+            item
+            for item in claim.source_qa_ids
+            if item in allowed_qa_ids and item in accepted_qa_ids
         ]
-        cited_intent_support = max(intent_support_values) if intent_support_values else None
-        question_relevance = max(direct_question_relevance, cited_context_relevance)
-        intent_relevance = claim_addresses_intent(
-            claim.claim,
-            context.primary_intent,
-            cited_context_relevance,
-            cited_intent_support,
-        )
-        high_trust_paraphrase = bool(
-            cited_context_relevance >= 0.80
-            and cited_entity_identity >= 0.75
-            and cited_vector_similarity >= 0.84
-            and (cited_intent_support is None or cited_intent_support >= 0.50)
-        )
         relation_ids = list(
             dict.fromkeys(
-                relation_id
-                for _, _, row in scored[:3]
+                str(relation_id)
+                for row in accepted_rows
                 for relation_id in row.get("relation_ids", [])
             )
         )
-
-        if (
-            valid_citations
-            and best_constraints
-            and (
-                best_score >= support_threshold
-                or (best_score >= weak_threshold and high_trust_paraphrase)
-            )
-            and question_relevance >= 0.25
-            and intent_relevance
-        ):
-            status = "supported"
-            reason = "A valid citation supports the claim and the claim directly addresses the query."
-        elif (
-            valid_citations
-            and best_constraints
-            and best_score >= weak_threshold
-            and question_relevance >= 0.15
-            and intent_relevance
-        ):
-            status = "weakly_supported"
-            reason = "The claim has partial evidence support or only moderate relevance to the query."
+        best_score = float(best_pair["support_score"]) if best_pair else 0.0
+        question_relevance = float(best_pair["question_relevance"]) if best_pair else 0.0
+        claim_concept_coverage = (
+            float(best_pair["query_concept_coverage"])
+            if best_pair
+            else 0.0
+        )
+        best_evidence_id = str(best_pair["citation_id"]) if best_pair else ""
+        failed_checks = list(best_pair["failed_checks"]) if best_pair else ["no_valid_citation"]
+        if status == "supported":
+            reason = f"Evidence {best_evidence_id} independently supports the claim and query intent."
+        elif status == "weakly_supported":
+            reason = f"Evidence {best_evidence_id} provides partial support for the claim."
         else:
-            status = "unsupported"
-            reason = "The claim lacks sufficient cited support or does not directly answer the query."
+            reason = (
+                f"No single cited evidence item passed all checks; best candidate: "
+                f"{best_evidence_id or 'none'}."
+            )
         verifications.append(
             ClaimVerification(
                 claim=claim,
                 status=status,
                 support_score=round(best_score, 6),
                 question_relevance=round(question_relevance, 6),
-                valid_citations=valid_citations,
+                query_concept_coverage=round(claim_concept_coverage, 6),
+                valid_citations=accepted_citations,
                 valid_qa_ids=valid_qa_ids,
                 supporting_relation_ids=relation_ids,
+                best_evidence_id=best_evidence_id,
+                failed_checks=failed_checks,
                 reason=reason,
             )
         )

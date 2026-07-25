@@ -1,0 +1,38 @@
+{
+  "full_pipeline": {
+    "bertscore": {
+      "status": "computed",
+      "evaluated_query_count": 3,
+      "bertscore_f1": 0.685236
+    },
+    "claim_grounding": {
+      "status": "computed",
+      "evaluated_query_count": 3,
+      "claim_support_rate": 1.0,
+      "hallucination_rate": 0.0
+    },
+    "citation_validity": {
+      "status": "computed",
+      "evaluated_query_count": 3,
+      "citation_validity": 1.0,
+      "claims_with_valid_citation_rate": 1.0
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 3,
+      "average_latency_ms": {
+        "end_to_end": 4049.121,
+        "step08_query_understanding": 0.0,
+        "step08_retrieval_planning": 0.0,
+        "step09_hybrid_retrieval": 0.0,
+        "step10_subgraph_reranking": 16.966,
+        "step11_context_construction": 1.204333,
+        "step12_answer_generation": 1009.856,
+        "step13_claim_extraction": 0.106,
+        "step14_claim_verification": 4.595,
+        "step15_hallucination_mitigation": 0.018,
+        "step16_reliability_scoring": 0.031
+      }
+    }
+  }
+}

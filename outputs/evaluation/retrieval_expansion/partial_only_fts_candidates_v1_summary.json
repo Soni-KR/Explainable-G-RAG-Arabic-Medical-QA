@@ -1,0 +1,42 @@
+{
+  "partial_only_queries": 44,
+  "selected_queries": 44,
+  "reformulation_drift_queries": 2,
+  "drift_query_ids": [
+    "evalv1_004",
+    "evalv1_017"
+  ],
+  "drift_terms_by_query": {
+    "evalv1_004": [
+      "احساس"
+    ],
+    "evalv1_017": [
+      "دموي"
+    ]
+  },
+  "corpus_version": "ahd_qa_train_v1",
+  "indexed_rows": 807698,
+  "holdout_policy": "exclude all normalized eval_test questions",
+  "reference_answers_used": false,
+  "human_labels_used_for_query_construction": false,
+  "graph_alias_expansion_enabled": true,
+  "queries_with_graph_aliases_added": 11,
+  "graph_aliases_added": 34,
+  "per_variant_k": 10,
+  "max_new_per_query": 12,
+  "raw_hits_by_variant": {
+    "A": 243,
+    "B": 278,
+    "C": 440
+  },
+  "queries_with_hits_by_variant": {
+    "A": 25,
+    "B": 28,
+    "C": 44
+  },
+  "existing_hits_excluded": 56,
+  "new_deduplicated_candidates": 483,
+  "queries_with_new_candidates": 44,
+  "queries_without_new_candidates": 0,
+  "output": "outputs\\evaluation\\retrieval_expansion\\partial_only_fts_candidates_v1.csv"
+}
