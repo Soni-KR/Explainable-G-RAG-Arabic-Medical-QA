@@ -1,0 +1,14 @@
+{
+  "rows_total_final_output": 100,
+  "rows_matched_to_reference": 100,
+  "rows_missing_reference": 0,
+  "missing_query_ids": [],
+  "model_type": "bert-base-multilingual-cased",
+  "reference_csv": "retrieval_gold_annotations_100.csv",
+  "lang": "ar",
+  "rescale_with_baseline": false,
+  "mean_bertscore_precision": 0.633409,
+  "mean_bertscore_recall": 0.6617,
+  "mean_bertscore_f1": 0.646856,
+  "per_question_csv": "outputs\\05_trial_graph_v1\\evaluation\\teammate100_final_bertscore_fixed.csv"
+}

@@ -1,0 +1,14 @@
+{
+  "rows_total_final_output": 100,
+  "rows_matched_to_reference": 100,
+  "rows_missing_reference": 0,
+  "missing_query_ids": [],
+  "model_type": "bert-base-multilingual-cased",
+  "reference_csv": "retrieval_gold_annotations_unseen_100_random_seed20260727.csv",
+  "lang": "ar",
+  "rescale_with_baseline": false,
+  "mean_bertscore_precision": 0.651055,
+  "mean_bertscore_recall": 0.655511,
+  "mean_bertscore_f1": 0.652023,
+  "per_question_csv": "outputs\\05_trial_graph_v1\\evaluation\\unseen100_random_seed20260727_live_groq_full_100_t042.csv"
+}
