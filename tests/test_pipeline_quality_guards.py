@@ -4,7 +4,11 @@ import unittest
 from dataclasses import replace
 
 from src.config import AppConfig, RetrievalConfig
-from src.evidence_policy import source_reliability_prior
+from src.evidence_policy import (
+    QUESTION_EVIDENCE,
+    authoritative_evidence_texts,
+    source_reliability_prior,
+)
 from src.models import (
     AnswerClaim,
     ClaimVerification,
@@ -22,12 +26,15 @@ from src.models import (
 )
 from src.step09_hybrid_retrieval import (
     anatomy_terms,
+    collect_evidence,
     medical_identity_similarity,
     score_relations,
     select_relevance_phrases,
     seed_scores,
     semantic_qa_fallback_eligible,
 )
+from src.step09a_qa_corpus import fts_terms
+from src.step08a_normalize_query import normalize_query
 from src.step08b_analyze_query import fallback_result
 from src.step10_rerank_subgraph import rerank_subgraph
 from src.step11_build_evidence_context import build_evidence_context
@@ -72,6 +79,150 @@ def analysis(query: str, entity_type: str = "DiseaseCondition") -> UnifiedQueryA
 
 
 class RetrievalQualityGuardTests(unittest.TestCase):
+    def test_vector_mention_preserves_question_origin(self) -> None:
+        rows = collect_evidence(
+            [],
+            [
+                VectorSearchResult(
+                    result_id="mention-1",
+                    document_type="EvidenceMention",
+                    score=0.95,
+                    qa_id="qa-1",
+                    text="period delayed for three weeks",
+                    metadata={
+                        "field": "question",
+                        "question": "period delayed for three weeks",
+                        "answer": "perform a pregnancy blood test",
+                        "source_quality": "mention_evidence",
+                    },
+                )
+            ],
+            5,
+        )
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(
+            rows[0].metadata["evidence_origin"],
+            QUESTION_EVIDENCE,
+        )
+
+    def test_step11_excludes_question_only_mention(self) -> None:
+        item = RetrievedEvidence(
+            evidence_id="mention::question-only",
+            source_id="mention-1",
+            qa_id="qa-1",
+            text="period delayed for three weeks",
+            question="period delayed for three weeks",
+            answer="",
+            source_quality="mention_evidence",
+            score=0.99,
+            metadata={
+                "field": "question",
+                "evidence_origin": "question",
+                "answer_relevance": 1.0,
+                "original_question_relevance": 1.0,
+                "direct_question_anchor": True,
+            },
+        )
+        context = build_evidence_context(
+            RerankedSubgraph(
+                query="period delayed for three weeks",
+                primary_intent="symptom_request",
+                evidence=[item],
+            ),
+            "period delayed for three weeks",
+            config=AppConfig(),
+        )
+
+        self.assertEqual(context.evidence_items, [])
+
+    def test_step11_replaces_question_mention_with_source_answer(self) -> None:
+        item = RetrievedEvidence(
+            evidence_id="mention::question-with-answer",
+            source_id="mention-2",
+            qa_id="qa-2",
+            text="period delayed for three weeks",
+            question="period delayed for three weeks",
+            answer="perform a pregnancy blood test",
+            source_quality="mention_evidence",
+            score=0.99,
+            metadata={
+                "field": "question",
+                "evidence_origin": "question",
+                "answer_relevance": 1.0,
+                "original_question_relevance": 1.0,
+                "direct_question_anchor": True,
+            },
+        )
+        context = build_evidence_context(
+            RerankedSubgraph(
+                query="period delayed for three weeks",
+                primary_intent="symptom_request",
+                evidence=[item],
+            ),
+            "period delayed for three weeks",
+            config=AppConfig(),
+        )
+
+        self.assertEqual(len(context.evidence_items), 1)
+        self.assertEqual(
+            context.evidence_items[0]["evidence"],
+            "perform a pregnancy blood test",
+        )
+        self.assertEqual(
+            context.evidence_items[0]["evidence_origin"],
+            QUESTION_EVIDENCE,
+        )
+        self.assertTrue(context.evidence_items[0]["question_text_excluded"])
+
+    def test_frozen_question_mention_cannot_support_restatement(self) -> None:
+        row = {
+            "evidence": "period delayed for three weeks",
+            "source_question": "period delayed for three weeks with pregnancy symptoms",
+            "source_answer": "",
+            "source_quality": "mention_evidence",
+        }
+        texts, origin, excluded = authoritative_evidence_texts(row)
+        self.assertEqual(texts, [])
+        self.assertEqual(origin, QUESTION_EVIDENCE)
+        self.assertTrue(excluded)
+
+        context = EvidenceContextBundle(
+            query="why is my period delayed?",
+            reformulated_query="why is my period delayed?",
+            primary_intent="cause_request",
+            evidence_items=[
+                {
+                    "evidence_id": "E1",
+                    **row,
+                    "answer_relevance": 1.0,
+                    "intent_support": 1.0,
+                    "relation_ids": [],
+                }
+            ],
+            allowed_evidence_ids=["E1"],
+        )
+        result = verify_claims(
+            [AnswerClaim("period delayed for three weeks", ["E1"])],
+            context,
+        )[0]
+
+        self.assertEqual(result.status, "unsupported")
+        self.assertIn("question_only_evidence", result.failed_checks)
+
+    def test_normalization_converts_arabic_presentation_forms(self) -> None:
+        presentation_form = "\ufecb\ufee8\ufeaa\ufee3\ufe8e"
+        self.assertEqual(
+            normalize_query(presentation_form).normalized_query,
+            "\u0639\u0646\u062f\u0645\u0627",
+        )
+
+    def test_fts_terms_keep_legacy_presentation_form_for_frozen_index(self) -> None:
+        presentation_form = "\ufecb\ufee8\ufeaa\ufee3\ufe8e"
+        terms = fts_terms(presentation_form, include_legacy_forms=True)
+        self.assertIn("\u0639\u0646\u062f\u0645\u0627", terms)
+        self.assertIn(presentation_form, terms)
+
     def test_relevance_phrases_prefer_conditions_and_symptoms(self) -> None:
         phrases = [
             ExtractedMedicalPhrase("الدواء", "الدواء", "Treatment", "corrected_query", 0.9),
@@ -320,6 +471,44 @@ class RetrievalQualityGuardTests(unittest.TestCase):
         context = build_evidence_context(subgraph, reformulated, config=AppConfig())
         self.assertEqual(context.evidence_items[0]["qa_id"], "diskhaler")
         self.assertEqual(context.evidence_items[0]["vector_similarity"], 0.94)
+
+    def test_exact_fts_question_is_a_direct_anchor_without_vector_score(self) -> None:
+        original = "ما علاج الربو؟"
+        exact = RetrievedEvidence(
+            evidence_id="qa::exact-fts",
+            source_id="exact-fts",
+            qa_id="exact-fts",
+            text="يحدد الطبيب العلاج المناسب للربو حسب الحالة.",
+            question=original,
+            answer="يحدد الطبيب العلاج المناسب للربو حسب الحالة.",
+            score=0.80,
+            source_quality="ahd_heldout_safe_corpus",
+            metadata={"retrieval_channel": "fts_qa", "vector_similarity": 0.0},
+        )
+        exact_plan = replace(
+            plan(),
+            original_query=original,
+            corrected_query=original,
+            reformulated_query="ما الخيارات الدوائية المتاحة لهذه الحالة؟",
+        )
+        subgraph = rerank_subgraph(
+            HybridRetrievalBundle(
+                query=original,
+                normalized_query=original,
+                reformulated_query=exact_plan.reformulated_query,
+                plan=exact_plan,
+                evidence=[exact],
+            ),
+            config=AppConfig(),
+        )
+        self.assertTrue(subgraph.evidence[0].metadata["exact_question_match"])
+        self.assertTrue(subgraph.evidence[0].metadata["direct_question_anchor"])
+        context = build_evidence_context(
+            subgraph,
+            exact_plan.reformulated_query,
+            config=AppConfig(),
+        )
+        self.assertEqual(context.evidence_items[0]["qa_id"], "exact-fts")
 
     def test_context_does_not_force_a_weaker_graph_item(self) -> None:
         vector_item = RetrievedEvidence(

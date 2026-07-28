@@ -12,6 +12,7 @@ import hashlib
 import json
 import re
 import sqlite3
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -243,7 +244,12 @@ def read_corpus_metadata(index_path: Path) -> dict[str, Any]:
     return metadata
 
 
-def fts_terms(query: str, limit: int = 24) -> list[str]:
+def fts_terms(
+    query: str,
+    limit: int = 24,
+    *,
+    include_legacy_forms: bool = False,
+) -> list[str]:
     normalized = normalized_text(query)
     terms: list[str] = []
     for token in TOKEN_RE.findall(normalized):
@@ -254,6 +260,22 @@ def fts_terms(query: str, limit: int = 24) -> list[str]:
             break
     if not terms:
         terms = [token for token in TOKEN_RE.findall(normalized) if len(token) >= 2][:limit]
+    if include_legacy_forms:
+        # The existing frozen FTS index contains a few Arabic presentation-form
+        # glyphs produced before NFKC normalization was added. Query both forms
+        # until that index is deliberately rebuilt under a new corpus version.
+        legacy_terms: list[str] = []
+        for token in TOKEN_RE.findall(query):
+            if (
+                len(token) >= 2
+                and unicodedata.normalize("NFKC", token) != token
+                and token not in terms
+                and token not in legacy_terms
+            ):
+                legacy_terms.append(token)
+                if len(legacy_terms) >= limit:
+                    break
+        terms.extend(legacy_terms)
     return terms
 
 
@@ -271,7 +293,7 @@ def lexical_relevance(query: str, question: str, position: int) -> float:
 
 
 def lexical_candidates(index_path: Path, query: str, limit: int) -> list[dict[str, Any]]:
-    terms = fts_terms(query)
+    terms = fts_terms(query, include_legacy_forms=True)
     if not terms or not index_path.exists():
         return []
     match_query = " OR ".join(f'"{term.replace(chr(34), chr(34) * 2)}"' for term in terms)

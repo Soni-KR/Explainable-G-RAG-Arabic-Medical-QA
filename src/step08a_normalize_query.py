@@ -4,6 +4,7 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 from dataclasses import asdict, dataclass, field
 
 
@@ -63,6 +64,14 @@ def normalize_query(query: str | None) -> QueryNormalizationResult:
     warnings: list[str] = []
 
     # Keep this behavior aligned with Step 1 preprocessing normalization.
+    # NFKC converts Arabic presentation-form glyphs to standard Arabic letters
+    # without correcting spelling or changing the query's medical meaning.
+    text = _apply_step(
+        text,
+        "normalize_unicode_compatibility",
+        lambda value: unicodedata.normalize("NFKC", value),
+        steps,
+    )
     text = _apply_step(text, "remove_urls", lambda value: URL_RE.sub(" ", value), steps)
     text = _apply_step(text, "remove_emails", lambda value: EMAIL_RE.sub(" ", value), steps)
     text = _apply_step(text, "normalize_arabic_persian_digits", lambda value: value.translate(ARABIC_DIGITS), steps)

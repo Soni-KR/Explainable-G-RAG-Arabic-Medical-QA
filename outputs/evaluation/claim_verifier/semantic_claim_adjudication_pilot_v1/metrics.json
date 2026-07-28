@@ -1,0 +1,30 @@
+{
+  "status": "complete",
+  "mode": "pilot",
+  "selected_queries": 12,
+  "completed_queries": 12,
+  "selected_claims": 18,
+  "completed_claims": 18,
+  "retain_decision": {
+    "rows": 18,
+    "true_positive": 10,
+    "true_negative": 3,
+    "false_positive": 5,
+    "false_negative": 0,
+    "accuracy": 0.722222,
+    "precision_retain": 0.666667,
+    "recall_retain": 1.0,
+    "f1_retain": 0.8,
+    "specificity_remove": 0.375
+  },
+  "dimension_exact_agreement": {
+    "evidence_support": 0.833333,
+    "query_relevance": 0.722222,
+    "intent_match": 0.777778,
+    "concept_match": 0.722222,
+    "anatomy_match": 0.777778
+  },
+  "api_calls": 12,
+  "cache_hits": 0,
+  "stopped_error": ""
+}

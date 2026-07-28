@@ -1,0 +1,54 @@
+{
+  "status": "frozen",
+  "production_verifier": "deterministic_step14_with_evidence_provenance",
+  "semantic_claim_adjudication_enabled": false,
+  "local_calibrator_enabled": false,
+  "graph_version": "final_v1",
+  "supplemental_graph_used": false,
+  "decision_reason": "No tested override met the zero-false-positive and minimum-0.80-recall development gate.",
+  "experiments": {
+    "gpt_oss_20b_v1": {
+      "completed_claims": 18,
+      "tp": 10,
+      "tn": 3,
+      "fp": 5,
+      "fn": 0,
+      "passed": false
+    },
+    "gpt_oss_20b_v2": {
+      "completed_claims": 17,
+      "tp": 10,
+      "tn": 4,
+      "fp": 3,
+      "fn": 0,
+      "passed": false
+    },
+    "gpt_oss_120b_v2": {
+      "completed_claims": 9,
+      "tp": 4,
+      "tn": 2,
+      "fp": 0,
+      "fn": 3,
+      "maximum_possible_final_recall": 0.7,
+      "passed": false
+    },
+    "local_e5_calibrator_v1": {
+      "rows": 81,
+      "queries": 55,
+      "oof_roc_auc": 0.642857,
+      "zero_false_positive_tp": 3,
+      "zero_false_positive_tn": 14,
+      "zero_false_positive_fp": 0,
+      "zero_false_positive_fn": 64,
+      "zero_false_positive_recall": 0.044776,
+      "passed": false
+    }
+  },
+  "production_changes_retained": [
+    "preserve EvidenceMention field and evidence origin",
+    "exclude question-only mentions from generation context",
+    "use only answer text and validated relation facts for claim support",
+    "recompute semantic eligibility from authoritative evidence",
+    "fail closed on inconsistent structured model decisions"
+  ]
+}

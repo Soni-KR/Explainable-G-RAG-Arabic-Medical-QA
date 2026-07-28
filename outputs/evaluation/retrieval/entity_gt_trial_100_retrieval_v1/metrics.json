@@ -1,0 +1,152 @@
+{
+  "lexical_only": {
+    "entities": {
+      "status": "computed",
+      "evaluated_query_count": 75,
+      "recall_at_5": 0.406667,
+      "mrr": 0.296963,
+      "ndcg_at_10": 0.332427
+    },
+    "evidence": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "qa": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "relations": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 100,
+      "average_latency_ms": {
+        "end_to_end": 5146.99851,
+        "retrieval_mode": 5146.96616,
+        "step08_shared_query_processing": 0.03235
+      }
+    }
+  },
+  "vector_only": {
+    "entities": {
+      "status": "computed",
+      "evaluated_query_count": 75,
+      "recall_at_5": 0.38,
+      "mrr": 0.268683,
+      "ndcg_at_10": 0.305375
+    },
+    "evidence": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "qa": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "relations": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 100,
+      "average_latency_ms": {
+        "end_to_end": 1106.66809,
+        "retrieval_mode": 1106.63574,
+        "step08_shared_query_processing": 0.03235
+      }
+    }
+  },
+  "graph_only": {
+    "entities": {
+      "status": "computed",
+      "evaluated_query_count": 75,
+      "recall_at_5": 0.186667,
+      "mrr": 0.155556,
+      "ndcg_at_10": 0.163491
+    },
+    "evidence": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "qa": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "relations": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 100,
+      "average_latency_ms": {
+        "end_to_end": 44.72329,
+        "retrieval_mode": 44.69094,
+        "step08_shared_query_processing": 0.03235
+      }
+    }
+  },
+  "hybrid_without_reranking": {
+    "entities": {
+      "status": "computed",
+      "evaluated_query_count": 75,
+      "recall_at_5": 0.38,
+      "mrr": 0.273329,
+      "ndcg_at_10": 0.305375
+    },
+    "evidence": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "qa": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "relations": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 100,
+      "average_latency_ms": {
+        "end_to_end": 1081.85919,
+        "retrieval_mode": 1081.82684,
+        "step08_shared_query_processing": 0.03235
+      }
+    }
+  },
+  "full_hybrid": {
+    "entities": {
+      "status": "computed",
+      "evaluated_query_count": 75,
+      "recall_at_5": 0.38,
+      "mrr": 0.273329,
+      "ndcg_at_10": 0.305375
+    },
+    "evidence": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "qa": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "relations": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 100,
+      "average_latency_ms": {
+        "end_to_end": 1176.24836,
+        "retrieval_mode": 1176.21601,
+        "step08_shared_query_processing": 0.03235
+      }
+    }
+  }
+}

@@ -233,6 +233,27 @@ class ClaimVerification:
 
 
 @dataclass(frozen=True)
+class SemanticClaimDecision:
+    """Structured semantic decision for one deterministically disputed claim."""
+
+    claim_id: str
+    evidence_support: str
+    query_relevance: str
+    intent_match: bool
+    concept_match: bool
+    anatomy_match: str
+    answer_contribution: str
+    clinical_relation_preserved: bool
+    named_entity_identity_preserved: bool
+    patient_context_compatible: bool
+    should_retain: bool
+    reason: str
+    model: str = ""
+    prompt_version: str = ""
+    cached: bool = False
+
+
+@dataclass(frozen=True)
 class MitigatedAnswer:
     answer: str
     answerability: str

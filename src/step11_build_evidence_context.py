@@ -3,6 +3,11 @@ from __future__ import annotations
 from collections import defaultdict
 
 from src.config import AppConfig, load_final_config
+from src.evidence_policy import (
+    QUESTION_EVIDENCE,
+    authoritative_evidence_texts,
+    infer_evidence_origin,
+)
 from src.models import EvidenceContextBundle, RerankedSubgraph, RetrievedEvidence
 from src.query_relevance import (
     candidate_relevance_features,
@@ -51,12 +56,10 @@ def has_strong_semantic_support(item: RetrievedEvidence, config: AppConfig) -> b
 
 
 def has_direct_question_anchor(item: RetrievedEvidence) -> bool:
-    """Allow exact/near-exact AHD questions without trusting cosine alone."""
+    """Honor the anchor decision made from the original query in Step 10."""
     return bool(
         item.metadata.get("direct_question_anchor")
         and float(item.metadata.get("original_question_relevance") or 0.0) >= 0.85
-        and float(item.metadata.get("vector_similarity") or 0.0) >= 0.90
-        and not item.metadata.get("anatomy_mismatch")
     )
 
 
@@ -93,6 +96,23 @@ def select_context_evidence(
 
     ranked: list[RetrievedEvidence] = []
     for item in subgraph.evidence:
+        evidence_origin = infer_evidence_origin(
+            evidence_origin=item.metadata.get("evidence_origin"),
+            field=item.metadata.get("field"),
+            source_quality=item.source_quality,
+            evidence=item.text,
+            source_question=item.question,
+            source_answer=item.answer,
+        )
+        # A question-only entity mention can help retrieval, but it cannot be
+        # passed to the generator as medical evidence. Relation-backed items
+        # remain eligible because their validated fact is handled separately.
+        if (
+            evidence_origin == QUESTION_EVIDENCE
+            and not item.answer.strip()
+            and not item.relation_ids
+        ):
+            continue
         features = item_relevance_features(item, query, subgraph.query_medical_phrases)
         answer_relevance = item_answer_relevance(item, query)
         direct_anchor = has_direct_question_anchor(item)
@@ -101,9 +121,9 @@ def select_context_evidence(
         concept_coverage = float(features["query_concept_coverage"])
         concept_floor = minimum_candidate_concept_coverage(concept_count)
         intent_score = float(features["intent_support"])
-        if bool(features["anatomy_mismatch"]):
+        if bool(features["anatomy_mismatch"]) and not direct_anchor:
             continue
-        if bool(features["unrelated_condition_mismatch"]):
+        if bool(features["unrelated_condition_mismatch"]) and not direct_anchor:
             continue
         if float(features["source_reliability"]) < config.retrieval.context_min_source_reliability:
             continue
@@ -271,16 +291,32 @@ def build_evidence_context(
             for item in evidence.relation_ids
             if item in relation_id_map
         ]
+        authoritative_texts, evidence_origin, question_text_excluded = (
+            authoritative_evidence_texts(
+                {
+                    "evidence": evidence.text,
+                    "source_question": evidence.question,
+                    "source_answer": evidence.answer,
+                    "source_quality": evidence.source_quality,
+                    "field": evidence.metadata.get("field"),
+                    "evidence_origin": evidence.metadata.get("evidence_origin"),
+                }
+            )
+        )
+        context_evidence = authoritative_texts[0] if authoritative_texts else ""
         evidence_items.append(
             {
                 "evidence_id": display_id,
                 "source_id": evidence.source_id,
                 "qa_id": evidence.qa_id,
-                "evidence": compact(evidence.text, 800),
+                "evidence": compact(context_evidence, 800),
                 "source_question": compact(evidence.question, 500),
                 "source_answer": compact(evidence.answer, 1000),
                 "category": evidence.category,
                 "source_quality": evidence.source_quality or "unknown",
+                "field": str(evidence.metadata.get("field") or ""),
+                "evidence_origin": evidence_origin,
+                "question_text_excluded": question_text_excluded,
                 "retrieval_score": evidence.score,
                 "answer_relevance": evidence.metadata.get("answer_relevance", 0.0),
                 "entity_identity": evidence.metadata.get("entity_identity", 0.0),
@@ -300,6 +336,9 @@ def build_evidence_context(
                 ),
                 "direct_question_anchor": evidence.metadata.get(
                     "direct_question_anchor", False
+                ),
+                "exact_question_match": evidence.metadata.get(
+                    "exact_question_match", False
                 ),
                 "relation_ids": relation_ids,
             }

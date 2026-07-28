@@ -141,6 +141,21 @@ class AnswerGenerationConfig:
 
 
 @dataclass(frozen=True)
+class ClaimAdjudicationConfig:
+    """Optional semantic review for claims rejected only by soft lexical gates."""
+
+    enabled: bool = False
+    provider: str = "groq"
+    model: str = "openai/gpt-oss-20b"
+    reasoning_effort: str = "low"
+    temperature: float = 0.0
+    prompt_version: str = "semantic_claim_adjudication_v2"
+    max_attempts: int = 1
+    request_interval_seconds: float = 8.0
+    groq_api_key: str = ""
+
+
+@dataclass(frozen=True)
 class AppConfig:
     graph_version: str = "final_v1"
     neo4j: Neo4jConfig = field(default_factory=Neo4jConfig)
@@ -149,6 +164,9 @@ class AppConfig:
     retrieval: RetrievalConfig = field(default_factory=RetrievalConfig)
     query_analysis: QueryAnalysisConfig = field(default_factory=QueryAnalysisConfig)
     answer_generation: AnswerGenerationConfig = field(default_factory=AnswerGenerationConfig)
+    claim_adjudication: ClaimAdjudicationConfig = field(
+        default_factory=ClaimAdjudicationConfig
+    )
 
 
 def load_config() -> AppConfig:
@@ -257,6 +275,23 @@ def load_config() -> AppConfig:
             retry_max_seconds=_env_float("ANSWER_GENERATION_RETRY_MAX_SECONDS", 30.0),
             groq_api_key=_env("GROQ_API_KEY", ""),
         ),
+        claim_adjudication=ClaimAdjudicationConfig(
+            enabled=_env_bool("CLAIM_ADJUDICATION_ENABLED", False),
+            provider=_env("CLAIM_ADJUDICATION_PROVIDER", "groq"),
+            model=_env("CLAIM_ADJUDICATION_MODEL", "openai/gpt-oss-20b"),
+            reasoning_effort=_env("CLAIM_ADJUDICATION_REASONING_EFFORT", "low"),
+            temperature=_env_float("CLAIM_ADJUDICATION_TEMPERATURE", 0.0),
+            prompt_version=_env(
+                "CLAIM_ADJUDICATION_PROMPT_VERSION",
+                "semantic_claim_adjudication_v2",
+            ),
+            max_attempts=_env_int("CLAIM_ADJUDICATION_MAX_ATTEMPTS", 1),
+            request_interval_seconds=_env_float(
+                "CLAIM_ADJUDICATION_REQUEST_INTERVAL_SECONDS",
+                8.0,
+            ),
+            groq_api_key=_env("GROQ_API_KEY", ""),
+        ),
     )
 
 
@@ -283,4 +318,5 @@ def load_final_config() -> AppConfig:
         retrieval=base.retrieval,
         query_analysis=base.query_analysis,
         answer_generation=base.answer_generation,
+        claim_adjudication=base.claim_adjudication,
     )

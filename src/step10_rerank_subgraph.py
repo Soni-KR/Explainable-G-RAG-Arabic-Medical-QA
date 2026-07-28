@@ -229,10 +229,19 @@ def rerank_subgraph(
                 - (0.30 if unrelated_condition_mismatch else 0.0),
             )
         semantic_anchor = max(question_relevance, passage_relevance, entity_identity)
+        # An exact AHD QA match is independently strong even when it came from
+        # lexical FTS and therefore has no vector score. Near-exact matches
+        # still require strong vector agreement and anatomy compatibility.
+        exact_question_match = bool(
+            direct_qa and original_question_relevance >= 0.98
+        )
         direct_question_anchor = bool(
-            original_question_relevance >= 0.85
-            and vector_similarity >= 0.90
-            and not anatomy_mismatch
+            exact_question_match
+            or (
+                original_question_relevance >= 0.85
+                and vector_similarity >= 0.90
+                and not anatomy_mismatch
+            )
         )
         strong_semantic_match = bool(
             vector_similarity >= config.retrieval.context_semantic_min_score
@@ -304,6 +313,7 @@ def rerank_subgraph(
                 or ("vector" if inferred_vector_candidate else "graph"),
                 "vector_similarity": round(vector_similarity, 6),
                 "strong_semantic_match": strong_semantic_match,
+                "exact_question_match": exact_question_match,
                 "direct_question_anchor": direct_question_anchor,
                 "answer_relevance": round(max(0.0, min(1.0, answer_relevance)), 6),
                 "rank_reason": (

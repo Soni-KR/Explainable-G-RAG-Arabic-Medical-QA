@@ -52,6 +52,7 @@ from src.step09_hybrid_retrieval import (
 )
 from src.step09a_qa_corpus import search_qa_corpus
 from src.step10_rerank_subgraph import rerank_subgraph
+from src.step11_build_evidence_context import build_evidence_context
 
 
 MODES = (
@@ -380,18 +381,22 @@ def run_mode(
     model: Any | None,
     corpus: dict[str, list[dict[str, Any]]] | None,
     evaluation_query: str,
+    allow_exact_question: bool = False,
 ) -> tuple[HybridRetrievalBundle, RerankedSubgraph]:
     if mode == "lexical_only":
         bundle = lexical_bundle(analysis, plan, corpus or {}, config)
-        bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
+        if not allow_exact_question:
+            bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
         return bundle, unreranked_subgraph(bundle, config)
     if mode == "vector_only":
         bundle = vector_bundle(analysis, plan, repository, config, model)
-        bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
+        if not allow_exact_question:
+            bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
         return bundle, unreranked_subgraph(bundle, config)
     if mode == "graph_only":
         bundle = graph_bundle(analysis, linking, plan, repository, config)
-        bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
+        if not allow_exact_question:
+            bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
         return bundle, unreranked_subgraph(bundle, config)
 
     bundle = retrieve_hybrid(
@@ -402,7 +407,8 @@ def run_mode(
         config=config,
         model=model,
     )
-    bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
+    if not allow_exact_question:
+        bundle = remove_evaluation_question_leakage(bundle, evaluation_query)
     if mode == "hybrid_without_reranking":
         return bundle, unreranked_subgraph(bundle, config)
     return bundle, rerank_subgraph(bundle, config=config)
@@ -470,6 +476,22 @@ def main() -> int:
         default=None,
         help="Reuse query analysis/linking/planning from a previous retrieval JSONL.",
     )
+    parser.add_argument(
+        "--allow-exact-question",
+        action="store_true",
+        help=(
+            "Known-answer sanity trial only: retain exact normalized question/QA "
+            "artifacts. The default remains leakage-safe."
+        ),
+    )
+    parser.add_argument(
+        "--apply-production-reranker",
+        action="store_true",
+        help=(
+            "Apply the same deterministic Step 10 reranker to every retrieval "
+            "mode before metrics and Step 11 context construction."
+        ),
+    )
     args = parser.parse_args()
     modes = args.mode or list(MODES)
     gold_path = args.gold_file.resolve()
@@ -524,8 +546,28 @@ def main() -> int:
                     model,
                     corpus,
                     gold.query,
+                    args.allow_exact_question,
                 )
                 retrieval_ms = round((perf_counter() - mode_started) * 1000.0, 3)
+                if args.apply_production_reranker and mode != "full_hybrid":
+                    rerank_started = perf_counter()
+                    subgraph = rerank_subgraph(bundle, config=config)
+                    reranking_ms = round(
+                        (perf_counter() - rerank_started) * 1000.0,
+                        3,
+                    )
+                else:
+                    reranking_ms = 0.0
+                context_started = perf_counter()
+                context = build_evidence_context(
+                    subgraph,
+                    analysis.reformulated_query,
+                    config=config,
+                )
+                context_ms = round(
+                    (perf_counter() - context_started) * 1000.0,
+                    3,
+                )
                 ranked = rankings(bundle, subgraph)
                 records_by_mode[mode].append(
                     {
@@ -541,13 +583,30 @@ def main() -> int:
                         "rankings": ranked,
                         "relations": [asdict(item) for item in subgraph.relations],
                         "evidence": [asdict(item) for item in subgraph.evidence],
+                        "step11_context": asdict(context),
                         "metrics": query_metrics(ranked, gold),
                         "timings_ms": {
                             "step08_shared_query_processing": analysis_ms,
                             "retrieval_mode": retrieval_ms,
-                            "end_to_end": round(analysis_ms + retrieval_ms, 3),
+                            "step10_production_reranking": reranking_ms,
+                            "step11_context_construction": context_ms,
+                            "end_to_end": round(
+                                analysis_ms
+                                + retrieval_ms
+                                + reranking_ms
+                                + context_ms,
+                                3,
+                            ),
                         },
-                        "warnings": list(dict.fromkeys([*bundle.warnings, *subgraph.warnings])),
+                        "warnings": list(
+                            dict.fromkeys(
+                                [
+                                    *bundle.warnings,
+                                    *subgraph.warnings,
+                                    *context.warnings,
+                                ]
+                            )
+                        ),
                     }
                 )
 

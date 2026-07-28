@@ -1,0 +1,182 @@
+{
+  "cohort": "ahd_reference_100",
+  "selection_frozen_before_results": true,
+  "selection_basis": "confirmed human candidate relevance",
+  "selection_rule": [
+    "confirmed direct Recall@5 among queries with a label-2 candidate",
+    "confirmed direct Recall@10",
+    "confirmed direct MRR",
+    "confirmed useful Hit@5",
+    "strong direct Step 11 contexts",
+    "non-empty Step 11 contexts",
+    "lower mean latency"
+  ],
+  "category_bonus_guard": {
+    "rule": "Category bonus is eligible only if it strictly improves the cohort's primary independent metric over conditional FTS.",
+    "passed": false
+  },
+  "scores": {
+    "vector_only": {
+      "artifact": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\retrieval\\frozen_prod_ahd_reference_100_20260728\\vector_only.jsonl",
+      "step11": {
+        "query_count": 100,
+        "strong_direct_context_queries": 11,
+        "partial_context_queries": 61,
+        "insufficient_context_queries": 28,
+        "nonempty_context_queries": 72,
+        "mean_context_items": 2.58,
+        "mean_retrieval_latency_ms": 1193.29932
+      },
+      "entity_gold": {
+        "status": "unavailable",
+        "reason": "No independently annotated entity IDs were supplied."
+      },
+      "human_pool": {
+        "status": "computed_with_incomplete_judgments",
+        "query_count": 100,
+        "queries_with_confirmed_direct_candidate": 49,
+        "confirmed_direct_hit_at_1_all_queries": 16,
+        "confirmed_direct_hit_at_5_all_queries": 34,
+        "confirmed_direct_hit_at_10_all_queries": 42,
+        "confirmed_direct_recall_at_5_answerable_queries": 0.693878,
+        "confirmed_direct_recall_at_10_answerable_queries": 0.857143,
+        "confirmed_direct_mrr_all_queries": 0.247722,
+        "confirmed_useful_hit_at_1_all_queries": 51,
+        "confirmed_useful_hit_at_5_all_queries": 78,
+        "judged_only_ndcg_at_10": 0.567547,
+        "top10_judgment_coverage": 0.463928,
+        "warning": "Unjudged candidates were not converted to label 0. Confirmed-hit figures are lower bounds; judged-only nDCG compresses unjudged rows."
+      }
+    },
+    "graph_only": {
+      "artifact": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\retrieval\\frozen_prod_ahd_reference_100_20260728\\graph_only.jsonl",
+      "step11": {
+        "query_count": 100,
+        "strong_direct_context_queries": 1,
+        "partial_context_queries": 5,
+        "insufficient_context_queries": 94,
+        "nonempty_context_queries": 6,
+        "mean_context_items": 0.11,
+        "mean_retrieval_latency_ms": 49.4919
+      },
+      "entity_gold": {
+        "status": "unavailable",
+        "reason": "No independently annotated entity IDs were supplied."
+      },
+      "human_pool": {
+        "status": "computed_with_incomplete_judgments",
+        "query_count": 100,
+        "queries_with_confirmed_direct_candidate": 49,
+        "confirmed_direct_hit_at_1_all_queries": 0,
+        "confirmed_direct_hit_at_5_all_queries": 0,
+        "confirmed_direct_hit_at_10_all_queries": 0,
+        "confirmed_direct_recall_at_5_answerable_queries": 0.0,
+        "confirmed_direct_recall_at_10_answerable_queries": 0.0,
+        "confirmed_direct_mrr_all_queries": 0.0,
+        "confirmed_useful_hit_at_1_all_queries": 0,
+        "confirmed_useful_hit_at_5_all_queries": 1,
+        "judged_only_ndcg_at_10": 0.011003,
+        "top10_judgment_coverage": 0.20354,
+        "warning": "Unjudged candidates were not converted to label 0. Confirmed-hit figures are lower bounds; judged-only nDCG compresses unjudged rows."
+      }
+    },
+    "vector_graph": {
+      "artifact": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\retrieval\\frozen_prod_ahd_reference_100_20260728\\full_hybrid.jsonl",
+      "step11": {
+        "query_count": 100,
+        "strong_direct_context_queries": 11,
+        "partial_context_queries": 60,
+        "insufficient_context_queries": 29,
+        "nonempty_context_queries": 71,
+        "mean_context_items": 2.58,
+        "mean_retrieval_latency_ms": 1203.82791
+      },
+      "entity_gold": {
+        "status": "unavailable",
+        "reason": "No independently annotated entity IDs were supplied."
+      },
+      "human_pool": {
+        "status": "computed_with_incomplete_judgments",
+        "query_count": 100,
+        "queries_with_confirmed_direct_candidate": 49,
+        "confirmed_direct_hit_at_1_all_queries": 16,
+        "confirmed_direct_hit_at_5_all_queries": 34,
+        "confirmed_direct_hit_at_10_all_queries": 42,
+        "confirmed_direct_recall_at_5_answerable_queries": 0.693878,
+        "confirmed_direct_recall_at_10_answerable_queries": 0.857143,
+        "confirmed_direct_mrr_all_queries": 0.247722,
+        "confirmed_useful_hit_at_1_all_queries": 51,
+        "confirmed_useful_hit_at_5_all_queries": 78,
+        "judged_only_ndcg_at_10": 0.558811,
+        "top10_judgment_coverage": 0.468687,
+        "warning": "Unjudged candidates were not converted to label 0. Confirmed-hit figures are lower bounds; judged-only nDCG compresses unjudged rows."
+      }
+    },
+    "vector_graph_conditional_fts": {
+      "artifact": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\retrieval\\frozen_prod_ahd_reference_100_conditional_fts_20260728\\vector_graph_conditional_fts.jsonl",
+      "step11": {
+        "query_count": 100,
+        "strong_direct_context_queries": 11,
+        "partial_context_queries": 58,
+        "insufficient_context_queries": 31,
+        "nonempty_context_queries": 69,
+        "mean_context_items": 3.04,
+        "mean_retrieval_latency_ms": 2355.06307
+      },
+      "entity_gold": {
+        "status": "unavailable",
+        "reason": "No independently annotated entity IDs were supplied."
+      },
+      "human_pool": {
+        "status": "computed_with_incomplete_judgments",
+        "query_count": 100,
+        "queries_with_confirmed_direct_candidate": 49,
+        "confirmed_direct_hit_at_1_all_queries": 15,
+        "confirmed_direct_hit_at_5_all_queries": 35,
+        "confirmed_direct_hit_at_10_all_queries": 37,
+        "confirmed_direct_recall_at_5_answerable_queries": 0.714286,
+        "confirmed_direct_recall_at_10_answerable_queries": 0.755102,
+        "confirmed_direct_mrr_all_queries": 0.236167,
+        "confirmed_useful_hit_at_1_all_queries": 44,
+        "confirmed_useful_hit_at_5_all_queries": 71,
+        "judged_only_ndcg_at_10": 0.536723,
+        "top10_judgment_coverage": 0.377778,
+        "warning": "Unjudged candidates were not converted to label 0. Confirmed-hit figures are lower bounds; judged-only nDCG compresses unjudged rows."
+      }
+    },
+    "vector_graph_conditional_fts_category_bonus": {
+      "artifact": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\retrieval\\frozen_prod_ahd_reference_100_conditional_fts_20260728\\vector_graph_conditional_fts_category_bonus.jsonl",
+      "step11": {
+        "query_count": 100,
+        "strong_direct_context_queries": 11,
+        "partial_context_queries": 58,
+        "insufficient_context_queries": 31,
+        "nonempty_context_queries": 69,
+        "mean_context_items": 3.04,
+        "mean_retrieval_latency_ms": 2360.28923
+      },
+      "entity_gold": {
+        "status": "unavailable",
+        "reason": "No independently annotated entity IDs were supplied."
+      },
+      "human_pool": {
+        "status": "computed_with_incomplete_judgments",
+        "query_count": 100,
+        "queries_with_confirmed_direct_candidate": 49,
+        "confirmed_direct_hit_at_1_all_queries": 14,
+        "confirmed_direct_hit_at_5_all_queries": 35,
+        "confirmed_direct_hit_at_10_all_queries": 37,
+        "confirmed_direct_recall_at_5_answerable_queries": 0.714286,
+        "confirmed_direct_recall_at_10_answerable_queries": 0.755102,
+        "confirmed_direct_mrr_all_queries": 0.230333,
+        "confirmed_useful_hit_at_1_all_queries": 42,
+        "confirmed_useful_hit_at_5_all_queries": 71,
+        "judged_only_ndcg_at_10": 0.536137,
+        "top10_judgment_coverage": 0.377778,
+        "warning": "Unjudged candidates were not converted to label 0. Confirmed-hit figures are lower bounds; judged-only nDCG compresses unjudged rows."
+      }
+    }
+  },
+  "selected_mode": "vector_graph_conditional_fts",
+  "selected_artifact": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\retrieval\\frozen_prod_ahd_reference_100_conditional_fts_20260728\\vector_graph_conditional_fts.jsonl"
+}

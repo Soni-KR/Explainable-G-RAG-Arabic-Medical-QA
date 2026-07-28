@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from src.evidence_policy import authoritative_evidence_texts
 from src.models import AnswerClaim, ClaimVerification, EvidenceContextBundle
 from src.query_relevance import (
     minimum_candidate_concept_coverage,
@@ -195,14 +196,13 @@ def verify_claims(
                 facts_by_id.get(str(relation_id), "")
                 for relation_id in row.get("relation_ids", [])
             ]
-            # A source question describes what was asked; it is not factual
-            # evidence for an answer. Only answers, evidence text and validated
-            # relation facts may support generated claims.
-            text_fields = [
-                str(row.get("evidence") or ""),
-                str(row.get("source_answer") or ""),
-                *relation_facts,
-            ]
+            # Question-origin mention text is useful for retrieval but cannot
+            # establish an answer fact. This also repairs frozen contexts that
+            # predate explicit evidence-origin metadata.
+            text_fields, _, question_text_excluded = authoritative_evidence_texts(
+                row,
+                relation_facts,
+            )
             segments = [
                 segment
                 for text in text_fields
@@ -225,7 +225,15 @@ def verify_claims(
             best_score, constraints_ok, failed_checks = (
                 segment_results[0]
                 if segment_results
-                else (0.0, False, ["no_evidence_segment"])
+                else (
+                    0.0,
+                    False,
+                    [
+                        "question_only_evidence"
+                        if question_text_excluded
+                        else "no_evidence_segment"
+                    ],
+                )
             )
             direct_question_relevance = question_relevance_score(
                 claim.claim,

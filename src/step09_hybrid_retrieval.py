@@ -7,6 +7,7 @@ from difflib import SequenceMatcher
 from typing import Any
 
 from src.config import AppConfig, load_final_config
+from src.evidence_policy import infer_evidence_origin
 from src.models import (
     HybridRetrievalBundle,
     QueryEntityLinkingResult,
@@ -399,6 +400,10 @@ def collect_evidence(
                     source_quality=str(source_row.get("source_quality") or ""),
                     score=relation.hybrid_score,
                     relation_ids=[relation.relation_id],
+                    metadata={
+                        "retrieval_channel": "graph",
+                        "evidence_origin": "validated_relation",
+                    },
                 )
             )
         for item in relation.metadata.get("evidence_items", []):
@@ -417,6 +422,17 @@ def collect_evidence(
                     source_quality=str(item.get("source_quality") or ""),
                     score=relation.hybrid_score,
                     relation_ids=[relation.relation_id],
+                    metadata={
+                        "retrieval_channel": "graph",
+                        "field": str(item.get("field") or ""),
+                        "evidence_origin": infer_evidence_origin(
+                            field=item.get("field"),
+                            source_quality=item.get("source_quality"),
+                            evidence=text,
+                            source_question=item.get("question"),
+                            source_answer=item.get("answer"),
+                        ),
+                    },
                 )
             )
 
@@ -428,6 +444,14 @@ def collect_evidence(
                 {
                     "retrieval_channel": channel,
                     "vector_similarity": metadata.get("vector_similarity", result.score),
+                    "evidence_origin": infer_evidence_origin(
+                        evidence_origin=metadata.get("evidence_origin"),
+                        field=metadata.get("field"),
+                        source_quality=metadata.get("source_quality"),
+                        evidence=result.text,
+                        source_question=metadata.get("question"),
+                        source_answer=metadata.get("answer"),
+                    ),
                 }
             )
             candidates.append(
@@ -451,6 +475,7 @@ def collect_evidence(
                 {
                     "retrieval_channel": channel,
                     "vector_similarity": metadata.get("vector_similarity", result.score),
+                    "evidence_origin": "answer",
                 }
             )
             candidates.append(

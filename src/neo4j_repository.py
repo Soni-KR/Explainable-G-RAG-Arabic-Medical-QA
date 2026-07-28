@@ -296,6 +296,7 @@ WITH seed, relation, source, target,
      collect(DISTINCT CASE WHEN mention IS NULL THEN null ELSE {{
        mention_id: mention.mention_id,
        evidence: mention.evidence,
+       field: mention.field,
        confidence: mention.confidence,
        qa_id: qa.qa_id,
        question: qa.question,

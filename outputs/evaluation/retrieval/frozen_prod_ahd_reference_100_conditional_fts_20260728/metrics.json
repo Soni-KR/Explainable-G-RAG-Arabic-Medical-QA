@@ -1,0 +1,76 @@
+{
+  "vector_graph_conditional_fts": {
+    "entities": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "evidence": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "qa": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "relations": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 100,
+      "average_latency_ms": {
+        "conditional_fts_step10_step11_replay": 1151.23516,
+        "end_to_end": 2355.06307,
+        "retrieval_mode": 1118.49964,
+        "step08_shared_query_processing": 0.02896,
+        "step10_production_reranking": 0.0,
+        "step11_context_construction": 85.29931
+      }
+    },
+    "step11": {
+      "query_count": 100,
+      "nonempty_context_queries": 69,
+      "strong_direct_context_queries": 11,
+      "partial_context_queries": 58,
+      "insufficient_context_queries": 31
+    }
+  },
+  "vector_graph_conditional_fts_category_bonus": {
+    "entities": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "evidence": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "qa": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "relations": {
+      "status": "unavailable",
+      "reason": "No independently annotated gold labels were available for this metric."
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 100,
+      "average_latency_ms": {
+        "conditional_fts_step10_step11_replay": 1156.46132,
+        "end_to_end": 2360.28923,
+        "retrieval_mode": 1118.49964,
+        "step08_shared_query_processing": 0.02896,
+        "step10_production_reranking": 0.0,
+        "step11_context_construction": 85.29931
+      }
+    },
+    "step11": {
+      "query_count": 100,
+      "nonempty_context_queries": 69,
+      "strong_direct_context_queries": 11,
+      "partial_context_queries": 58,
+      "insufficient_context_queries": 31
+    }
+  }
+}

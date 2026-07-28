@@ -1,0 +1,38 @@
+{
+  "evaluation": "frozen_conditional_fts_ablation",
+  "created_at_utc": "2026-07-28T13:02:31.374338+00:00",
+  "graph_version": "final_v1",
+  "embedding_model": "intfloat/multilingual-e5-base",
+  "baseline_file": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\retrieval\\frozen_prod_ahd_reference_100_20260728\\full_hybrid.jsonl",
+  "baseline_sha256": "86adba1407d5bfc119fb4eeedaa19e0e7e9e840775f7abbbd717f174d4e9d95a",
+  "gold_file": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\data\\evaluation\\retrieval_gold_annotations_100.csv",
+  "gold_sha256": "e9df2601734545a3d31cd3dacbbac5550d18214f42d651e0193122dd6647b945",
+  "qa_index": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\data\\retrieval\\ahd_qa_train_v1.sqlite",
+  "qa_corpus_version": "ahd_qa_train_v1",
+  "query_count": 100,
+  "modes": [
+    "vector_graph_conditional_fts",
+    "vector_graph_conditional_fts_category_bonus"
+  ],
+  "settings": {
+    "fts_variant_limit": 20,
+    "max_new_candidates": 12,
+    "category_bonus": 0.05,
+    "category_source": "weighted ordinary Step 11 selected context",
+    "exact_question_excluded": true
+  },
+  "expansion_trigger": {
+    "ordinary_context_must_be_nonempty": true,
+    "strong_direct_evidence_must_be_absent": true,
+    "strong_answer_relevance": 0.75,
+    "strong_concept_coverage": 0.75,
+    "strong_intent_support": 0.5,
+    "strong_source_reliability": 0.75
+  },
+  "human_relevance_labels_read": false,
+  "reference_answers_used_for_retrieval": false,
+  "supplemental_graph_used": false,
+  "learned_reranker_used": false,
+  "semantic_adjudication_used": false,
+  "e5_calibrator_used": false
+}

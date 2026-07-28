@@ -1,0 +1,31 @@
+{
+  "run_id": "local_e5_calibrator_v1",
+  "review_file": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\entity_gt_trial_100\\known_answer_diagnosis\\known_answer_removed_claim_review_queue_human_reviewed.csv",
+  "source_run": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\generation\\entity_gt_trial_100_known_answer_generation_v1\\full_pipeline.jsonl",
+  "model_output": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\models\\claim_verifier_e5_calibrator_v1.json",
+  "embedding_model": "intfloat/multilingual-e5-base",
+  "embedding_snapshot": "C:\\Users\\mega0\\.cache\\huggingface\\hub\\models--intfloat--multilingual-e5-base\\snapshots\\d128750597153bb5987e10b1c3493a34e5a4502a",
+  "feature_names": [
+    "deterministic_support_score",
+    "authoritative_support_score",
+    "question_relevance",
+    "claim_query_concept_coverage",
+    "context_answer_relevance",
+    "context_entity_identity",
+    "context_intent_support",
+    "context_vector_similarity",
+    "context_query_concept_coverage",
+    "context_source_reliability",
+    "claim_evidence_e5",
+    "claim_query_e5",
+    "query_evidence_e5",
+    "claim_evidence_length_ratio",
+    "evidence_segment_count",
+    "failed_intent",
+    "failed_concept",
+    "failed_anatomy"
+  ],
+  "human_labels_sent_to_external_service": false,
+  "network_used": false,
+  "production_enabled": false
+}
