@@ -1,0 +1,54 @@
+{
+  "run_id": "dual_qa_scenario_pilot_10q_v3_20260730",
+  "created_at_utc": "2026-07-30T12:33:23.996606+00:00",
+  "retrieval_experiment": "dual_qa_scenario_v1",
+  "graph_version": "final_v1",
+  "supplemental_graph_enabled": false,
+  "graph_expansion_performed": false,
+  "embedding_model": "intfloat/multilingual-e5-base",
+  "embedding_dimension": 768,
+  "embedding_device": "cpu",
+  "qa_corpus": {
+    "index_path": "data\\retrieval\\ahd_qa_train_v1.sqlite",
+    "corpus_version": "ahd_qa_train_v1",
+    "candidate_k_per_channel": 40,
+    "inject_top_k": 12,
+    "exact_source_question_exclusion": true
+  },
+  "trigger": "saved Step 11 context is empty or lacks strong direct evidence",
+  "modes": [
+    "baseline_conditional_fts",
+    "question_only",
+    "answer_only",
+    "dual_no_scenario",
+    "dual_with_scenario"
+  ],
+  "cohort_files": {
+    "ahd_reference": {
+      "path": "outputs\\evaluation\\retrieval\\frozen_prod_ahd_reference_100_conditional_fts_20260728\\vector_graph_conditional_fts.jsonl",
+      "sha256": "89b45d728be3eeec3ab7b8130af8808e297f1abd29dca76851a147f700c01ca9"
+    }
+  },
+  "human_label_file": {
+    "path": "data\\evaluation\\candidate_relevance_combined_pool_v2.csv",
+    "sha256": "86da4010b77329cae885ac5ae2b358c6cc2879178dce6e1b29c5f2ab74dea350",
+    "use": "post-selection diagnostics only"
+  },
+  "runtime": {
+    "python": "3.13.12 (tags/v3.13.12:1cbe481, Feb  3 2026, 18:22:25) [MSC v.1944 64 bit (AMD64)]",
+    "git": {
+      "commit": "6c65ed7af27b332afa4e253f9936af61442c3ec1",
+      "dirty": true
+    }
+  },
+  "safeguards": {
+    "step08_reused": true,
+    "neo4j_queried": false,
+    "llm_called": false,
+    "retrieval_or_generation_thresholds_changed": false,
+    "references_used_for_retrieval": false,
+    "annotations_used_for_retrieval": false,
+    "supplemental_graph_used": false
+  },
+  "processed_records": 10
+}

@@ -1,0 +1,9 @@
+{
+  "status": "ok",
+  "run_id": "experiment_c_cross_encoder_rescue_ahd100_20260730",
+  "output": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\retrieval\\experiment_c_cross_encoder_rescue_ahd100_20260730",
+  "queries": 100,
+  "modes": [
+    "full_hybrid_cross_encoder_rescue"
+  ]
+}

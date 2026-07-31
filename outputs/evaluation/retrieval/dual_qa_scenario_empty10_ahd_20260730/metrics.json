@@ -1,0 +1,316 @@
+{
+  "retrieval_experiment": "dual_qa_scenario_v1",
+  "cohorts": {
+    "ahd_reference": {
+      "baseline_conditional_fts": {
+        "query_count": 10,
+        "triggered_query_count": 0,
+        "nonempty_context_queries": 0,
+        "direct_context_queries": 0,
+        "selected_evidence_items": 0,
+        "exact_source_question_leaks": 0,
+        "selected_hard_scenario_conflicts": 0,
+        "known_label_evaluation": {
+          "status": "unavailable",
+          "labelled_selected_count": 0,
+          "useful_precision": null,
+          "direct_precision": null,
+          "missing_labels_are_not_zero": true
+        },
+        "reference_answer_semantic_proxy": {
+          "status": "unavailable",
+          "mean_max_similarity": null,
+          "queries_at_or_above_0_80": 0
+        },
+        "source_question_scenario_proxy": {
+          "mean_max_similarity": null
+        },
+        "latency_ms": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        }
+      },
+      "question_only": {
+        "query_count": 10,
+        "triggered_query_count": 10,
+        "nonempty_context_queries": 0,
+        "direct_context_queries": 0,
+        "selected_evidence_items": 0,
+        "exact_source_question_leaks": 0,
+        "selected_hard_scenario_conflicts": 0,
+        "known_label_evaluation": {
+          "status": "unavailable",
+          "labelled_selected_count": 0,
+          "useful_precision": null,
+          "direct_precision": null,
+          "missing_labels_are_not_zero": true
+        },
+        "reference_answer_semantic_proxy": {
+          "status": "unavailable",
+          "mean_max_similarity": null,
+          "queries_at_or_above_0_80": 0
+        },
+        "source_question_scenario_proxy": {
+          "mean_max_similarity": null
+        },
+        "latency_ms": {
+          "mean": 37842.88,
+          "median": 38061.173,
+          "p95": 48303.048,
+          "total": 378428.801
+        }
+      },
+      "answer_only": {
+        "query_count": 10,
+        "triggered_query_count": 10,
+        "nonempty_context_queries": 3,
+        "direct_context_queries": 0,
+        "selected_evidence_items": 5,
+        "exact_source_question_leaks": 0,
+        "selected_hard_scenario_conflicts": 0,
+        "known_label_evaluation": {
+          "status": "unavailable",
+          "labelled_selected_count": 0,
+          "useful_precision": null,
+          "direct_precision": null,
+          "missing_labels_are_not_zero": true
+        },
+        "reference_answer_semantic_proxy": {
+          "status": "dataset_reference_proxy_not_independent_gold",
+          "mean_max_similarity": 0.835679,
+          "queries_at_or_above_0_80": 3
+        },
+        "source_question_scenario_proxy": {
+          "mean_max_similarity": 0.850352
+        },
+        "latency_ms": {
+          "mean": 38198.006,
+          "median": 38248.909,
+          "p95": 49139.18,
+          "total": 381980.064
+        }
+      },
+      "dual_no_scenario": {
+        "query_count": 10,
+        "triggered_query_count": 10,
+        "nonempty_context_queries": 2,
+        "direct_context_queries": 0,
+        "selected_evidence_items": 2,
+        "exact_source_question_leaks": 0,
+        "selected_hard_scenario_conflicts": 0,
+        "known_label_evaluation": {
+          "status": "unavailable",
+          "labelled_selected_count": 0,
+          "useful_precision": null,
+          "direct_precision": null,
+          "missing_labels_are_not_zero": true
+        },
+        "reference_answer_semantic_proxy": {
+          "status": "dataset_reference_proxy_not_independent_gold",
+          "mean_max_similarity": 0.828544,
+          "queries_at_or_above_0_80": 2
+        },
+        "source_question_scenario_proxy": {
+          "mean_max_similarity": 0.837668
+        },
+        "latency_ms": {
+          "mean": 37998.102,
+          "median": 38088.779,
+          "p95": 48561.157,
+          "total": 379981.018
+        }
+      },
+      "dual_with_scenario": {
+        "query_count": 10,
+        "triggered_query_count": 10,
+        "nonempty_context_queries": 2,
+        "direct_context_queries": 0,
+        "selected_evidence_items": 2,
+        "exact_source_question_leaks": 0,
+        "selected_hard_scenario_conflicts": 0,
+        "known_label_evaluation": {
+          "status": "unavailable",
+          "labelled_selected_count": 0,
+          "useful_precision": null,
+          "direct_precision": null,
+          "missing_labels_are_not_zero": true
+        },
+        "reference_answer_semantic_proxy": {
+          "status": "dataset_reference_proxy_not_independent_gold",
+          "mean_max_similarity": 0.832103,
+          "queries_at_or_above_0_80": 2
+        },
+        "source_question_scenario_proxy": {
+          "mean_max_similarity": 0.856227
+        },
+        "latency_ms": {
+          "mean": 37858.964,
+          "median": 37977.682,
+          "p95": 48343.012,
+          "total": 378589.644
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "baseline_conditional_fts": {
+      "query_count": 10,
+      "triggered_query_count": 0,
+      "nonempty_context_queries": 0,
+      "direct_context_queries": 0,
+      "selected_evidence_items": 0,
+      "exact_source_question_leaks": 0,
+      "selected_hard_scenario_conflicts": 0,
+      "known_label_evaluation": {
+        "status": "unavailable",
+        "labelled_selected_count": 0,
+        "useful_precision": null,
+        "direct_precision": null,
+        "missing_labels_are_not_zero": true
+      },
+      "reference_answer_semantic_proxy": {
+        "status": "unavailable",
+        "mean_max_similarity": null,
+        "queries_at_or_above_0_80": 0
+      },
+      "source_question_scenario_proxy": {
+        "mean_max_similarity": null
+      },
+      "latency_ms": {
+        "mean": 0.0,
+        "median": 0.0,
+        "p95": 0.0,
+        "total": 0.0
+      }
+    },
+    "question_only": {
+      "query_count": 10,
+      "triggered_query_count": 10,
+      "nonempty_context_queries": 0,
+      "direct_context_queries": 0,
+      "selected_evidence_items": 0,
+      "exact_source_question_leaks": 0,
+      "selected_hard_scenario_conflicts": 0,
+      "known_label_evaluation": {
+        "status": "unavailable",
+        "labelled_selected_count": 0,
+        "useful_precision": null,
+        "direct_precision": null,
+        "missing_labels_are_not_zero": true
+      },
+      "reference_answer_semantic_proxy": {
+        "status": "unavailable",
+        "mean_max_similarity": null,
+        "queries_at_or_above_0_80": 0
+      },
+      "source_question_scenario_proxy": {
+        "mean_max_similarity": null
+      },
+      "latency_ms": {
+        "mean": 37842.88,
+        "median": 38061.173,
+        "p95": 48303.048,
+        "total": 378428.801
+      }
+    },
+    "answer_only": {
+      "query_count": 10,
+      "triggered_query_count": 10,
+      "nonempty_context_queries": 3,
+      "direct_context_queries": 0,
+      "selected_evidence_items": 5,
+      "exact_source_question_leaks": 0,
+      "selected_hard_scenario_conflicts": 0,
+      "known_label_evaluation": {
+        "status": "unavailable",
+        "labelled_selected_count": 0,
+        "useful_precision": null,
+        "direct_precision": null,
+        "missing_labels_are_not_zero": true
+      },
+      "reference_answer_semantic_proxy": {
+        "status": "dataset_reference_proxy_not_independent_gold",
+        "mean_max_similarity": 0.835679,
+        "queries_at_or_above_0_80": 3
+      },
+      "source_question_scenario_proxy": {
+        "mean_max_similarity": 0.850352
+      },
+      "latency_ms": {
+        "mean": 38198.006,
+        "median": 38248.909,
+        "p95": 49139.18,
+        "total": 381980.064
+      }
+    },
+    "dual_no_scenario": {
+      "query_count": 10,
+      "triggered_query_count": 10,
+      "nonempty_context_queries": 2,
+      "direct_context_queries": 0,
+      "selected_evidence_items": 2,
+      "exact_source_question_leaks": 0,
+      "selected_hard_scenario_conflicts": 0,
+      "known_label_evaluation": {
+        "status": "unavailable",
+        "labelled_selected_count": 0,
+        "useful_precision": null,
+        "direct_precision": null,
+        "missing_labels_are_not_zero": true
+      },
+      "reference_answer_semantic_proxy": {
+        "status": "dataset_reference_proxy_not_independent_gold",
+        "mean_max_similarity": 0.828544,
+        "queries_at_or_above_0_80": 2
+      },
+      "source_question_scenario_proxy": {
+        "mean_max_similarity": 0.837668
+      },
+      "latency_ms": {
+        "mean": 37998.102,
+        "median": 38088.779,
+        "p95": 48561.157,
+        "total": 379981.018
+      }
+    },
+    "dual_with_scenario": {
+      "query_count": 10,
+      "triggered_query_count": 10,
+      "nonempty_context_queries": 2,
+      "direct_context_queries": 0,
+      "selected_evidence_items": 2,
+      "exact_source_question_leaks": 0,
+      "selected_hard_scenario_conflicts": 0,
+      "known_label_evaluation": {
+        "status": "unavailable",
+        "labelled_selected_count": 0,
+        "useful_precision": null,
+        "direct_precision": null,
+        "missing_labels_are_not_zero": true
+      },
+      "reference_answer_semantic_proxy": {
+        "status": "dataset_reference_proxy_not_independent_gold",
+        "mean_max_similarity": 0.832103,
+        "queries_at_or_above_0_80": 2
+      },
+      "source_question_scenario_proxy": {
+        "mean_max_similarity": 0.856227
+      },
+      "latency_ms": {
+        "mean": 37858.964,
+        "median": 37977.682,
+        "p95": 48343.012,
+        "total": 378589.644
+      }
+    }
+  },
+  "interpretation_rules": {
+    "references_used_only_after_context_selection": true,
+    "human_labels_used_only_after_context_selection": true,
+    "missing_human_labels_are_unavailable_not_zero": true,
+    "semantic_reference_scores_are_proxies": true,
+    "generation_was_not_run": true
+  }
+}

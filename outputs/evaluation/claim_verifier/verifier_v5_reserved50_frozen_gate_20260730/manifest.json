@@ -1,0 +1,16 @@
+{
+  "run_id": "verifier_v5_reserved50_frozen_gate_20260730",
+  "purpose": "reserved 50-claim safety regression",
+  "review_file": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\generation\\evidence_adaptive_v4_2_comparison_200q_20260729\\differential_safety_audit.csv",
+  "review_sha256": "8f617cee73be7fb4a89b36c64d46c6b212face3a0f9c7da7177f7eeb39022b7d",
+  "graph_version": "final_v1",
+  "model": "openai/gpt-oss-20b",
+  "prompt_version": "semantic_claim_adjudication_v2",
+  "temperature": 0.0,
+  "reasoning_effort": "low",
+  "request_interval_seconds": 15.0,
+  "cache_only": true,
+  "cache": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\cache\\verifier_v5_reserved50_frozen_gate_20260730\\semantic_claim_adjudication.jsonl",
+  "human_labels_sent_to_model": false,
+  "gate_rules_modified": false
+}

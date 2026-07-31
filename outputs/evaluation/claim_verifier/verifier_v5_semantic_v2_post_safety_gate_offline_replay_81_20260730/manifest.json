@@ -1,0 +1,27 @@
+{
+  "run_id": "verifier_v5_semantic_v2_post_safety_gate_offline_replay_81_20260730",
+  "purpose": "development evaluation of disputed-claim semantic adjudication",
+  "review_file": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\entity_gt_trial_100\\known_answer_diagnosis\\known_answer_removed_claim_review_queue_human_reviewed.csv",
+  "review_sha256": "07b99b1d835822089a74e6249840e043a6f59bea0838ea91f0c69a5c863206c7",
+  "source_run": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\generation\\entity_gt_trial_100_known_answer_generation_v1\\full_pipeline.jsonl",
+  "source_sha256": "a11d3805579ac9c383ad97ed805d753ea13de8af261dc657c28205fe81f292bc",
+  "human_labels_sent_to_model": false,
+  "v5_hard_gates": true,
+  "pilot_safety_gate": {
+    "maximum_false_positives": 0,
+    "minimum_retain_recall": 0.8,
+    "passed": false
+  },
+  "selection": {
+    "mode": "all",
+    "seed": "20260728",
+    "pilot_negative_queries": 8,
+    "pilot_positive_queries": 4
+  },
+  "model": "openai/gpt-oss-20b",
+  "prompt_version": "semantic_claim_adjudication_v2",
+  "temperature": 0.0,
+  "reasoning_effort": "low",
+  "request_interval_seconds": 8.0,
+  "cache": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\cache\\verifier_v5_semantic_v2_post_safety_gate_offline_replay_81_20260730\\semantic_claim_adjudication.jsonl"
+}

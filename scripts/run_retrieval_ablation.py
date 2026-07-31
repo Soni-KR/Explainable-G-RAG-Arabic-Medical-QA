@@ -51,17 +51,21 @@ from src.step09_hybrid_retrieval import (
     vector_results,
 )
 from src.step09a_qa_corpus import search_qa_corpus
+from src.step09e_conditional_cross_encoder_rescue import (
+    ConditionalCrossEncoderRescue,
+)
 from src.step10_rerank_subgraph import rerank_subgraph
 from src.step11_build_evidence_context import build_evidence_context
 
 
-MODES = (
+DEFAULT_MODES = (
     "lexical_only",
     "vector_only",
     "graph_only",
     "hybrid_without_reranking",
     "full_hybrid",
 )
+MODES = (*DEFAULT_MODES, "full_hybrid_cross_encoder_rescue")
 
 
 def stable_unique(values: list[str]) -> list[str]:
@@ -493,10 +497,21 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
-    modes = args.mode or list(MODES)
+    modes = args.mode or list(DEFAULT_MODES)
     gold_path = args.gold_file.resolve()
     gold_queries = load_gold_queries(gold_path, args.limit)
     config = load_final_config()
+    rescue_mode_enabled = "full_hybrid_cross_encoder_rescue" in modes
+    if rescue_mode_enabled:
+        config = replace(
+            config,
+            qa_corpus=replace(
+                config.qa_corpus,
+                cross_encoder_rescue_enabled=True,
+                # Keep this ablation isolated from the older E5 fallback.
+                semantic_fallback_enabled=False,
+            ),
+        )
     if config.graph_version != "final_v1":
         raise RuntimeError("Retrieval evaluation is restricted to frozen final_v1.")
     if args.dry_run:
@@ -509,10 +524,27 @@ def main() -> int:
     run_id = args.run_id or make_run_id("retrieval")
     ensure_run_available(RETRIEVAL_OUTPUT_ROOT, run_id)
     records_by_mode: dict[str, list[dict[str, Any]]] = {mode: [] for mode in modes}
-    needs_model = any(mode in {"vector_only", "hybrid_without_reranking", "full_hybrid"} for mode in modes)
+    needs_model = any(
+        mode
+        in {
+            "vector_only",
+            "hybrid_without_reranking",
+            "full_hybrid",
+            "full_hybrid_cross_encoder_rescue",
+        }
+        for mode in modes
+    )
     model = None
     if needs_model:
         model, _, _ = load_model(config.embeddings.model_name, config.embeddings.dimension)
+    cross_encoder_rescue = (
+        ConditionalCrossEncoderRescue(
+            config,
+            raise_on_unavailable=True,
+        )
+        if rescue_mode_enabled
+        else None
+    )
 
     with Neo4jRepository(config=config) as repository:
         graph_counts = repository.get_graph_counts()
@@ -568,6 +600,44 @@ def main() -> int:
                     (perf_counter() - context_started) * 1000.0,
                     3,
                 )
+                cross_encoder_audit: dict[str, Any] = {
+                    "enabled": False,
+                    "eligible": False,
+                    "status": "not_run",
+                }
+                cross_encoder_ms = 0.0
+                if mode == "full_hybrid_cross_encoder_rescue":
+                    assert cross_encoder_rescue is not None
+                    rescue_started = perf_counter()
+                    bundle, cross_encoder_audit = (
+                        cross_encoder_rescue.apply(bundle, context)
+                    )
+                    cross_encoder_ms = round(
+                        (perf_counter() - rescue_started) * 1000.0,
+                        3,
+                    )
+                    if not args.allow_exact_question:
+                        bundle = remove_evaluation_question_leakage(
+                            bundle,
+                            gold.query,
+                        )
+                    if cross_encoder_audit.get("status") == "ok":
+                        rerank_started = perf_counter()
+                        subgraph = rerank_subgraph(bundle, config=config)
+                        reranking_ms += round(
+                            (perf_counter() - rerank_started) * 1000.0,
+                            3,
+                        )
+                        context_started = perf_counter()
+                        context = build_evidence_context(
+                            subgraph,
+                            analysis.reformulated_query,
+                            config=config,
+                        )
+                        context_ms += round(
+                            (perf_counter() - context_started) * 1000.0,
+                            3,
+                        )
                 ranked = rankings(bundle, subgraph)
                 records_by_mode[mode].append(
                     {
@@ -584,17 +654,22 @@ def main() -> int:
                         "relations": [asdict(item) for item in subgraph.relations],
                         "evidence": [asdict(item) for item in subgraph.evidence],
                         "step11_context": asdict(context),
+                        "cross_encoder_rescue": cross_encoder_audit,
                         "metrics": query_metrics(ranked, gold),
                         "timings_ms": {
                             "step08_shared_query_processing": analysis_ms,
                             "retrieval_mode": retrieval_ms,
                             "step10_production_reranking": reranking_ms,
                             "step11_context_construction": context_ms,
+                            "step09_cross_encoder_rescue": (
+                                cross_encoder_ms
+                            ),
                             "end_to_end": round(
                                 analysis_ms
                                 + retrieval_ms
                                 + reranking_ms
-                                + context_ms,
+                                + context_ms
+                                + cross_encoder_ms,
                                 3,
                             ),
                         },
@@ -621,6 +696,33 @@ def main() -> int:
         graph_counts=graph_counts,
         arguments={key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()},
     )
+    manifest["cross_encoder_rescue"] = {
+        "enabled": rescue_mode_enabled,
+        "model": (
+            config.qa_corpus.cross_encoder_model
+            if rescue_mode_enabled
+            else ""
+        ),
+        "candidate_k": config.qa_corpus.cross_encoder_candidate_k,
+        "weight": config.qa_corpus.cross_encoder_weight,
+        "minimum_score": config.qa_corpus.cross_encoder_min_score,
+        "runtime_checks": (
+            cross_encoder_rescue.calls
+            if cross_encoder_rescue is not None
+            else 0
+        ),
+        "triggered_queries": (
+            cross_encoder_rescue.triggered
+            if cross_encoder_rescue is not None
+            else 0
+        ),
+        "total_latency_ms": (
+            round(cross_encoder_rescue.total_latency_ms, 3)
+            if cross_encoder_rescue is not None
+            else 0.0
+        ),
+        "supplemental_graph": False,
+    }
     run_directory = create_run_directory(RETRIEVAL_OUTPUT_ROOT, run_id)
     for mode, records in records_by_mode.items():
         write_jsonl(run_directory / f"{mode}.jsonl", records)

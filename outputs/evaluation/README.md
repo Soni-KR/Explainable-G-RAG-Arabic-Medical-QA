@@ -11,6 +11,20 @@ Only results that still explain the current `final_v1` pipeline are active here.
 
 ## Generation and Claim Audit
 
+- `frozen_production_200q_20260728`: authoritative frozen v3 evaluation over the
+  two independent 100-query cohorts.
+- `generation/evidence_adaptive_v4_2_ahd_reference_100_20260729` and
+  `generation/evidence_adaptive_v4_2_entity_ground_truth_100_20260729`: completed
+  v4.2 Steps 12-17 ablation runs using the exact v3 Step 11 contexts.
+- `generation/evidence_adaptive_v4_2_comparison_200q_20260729`: authoritative
+  comparison, differential evidence-fidelity review, and final decision. V4.2
+  reduced substantive answers from 49 to 46 and surviving claims from 72 to 56;
+  13 unsafe differential claims were found. V3 remains production.
+- `generation/dev_v3_1_frozen_context_10q_20260729`: development-only provider
+  and schema pilot for structured v3.1. It reused exact Step 11 contexts,
+  generated for all 8 non-empty queries, retained 5 claims across 4 answers, and
+  had no technical failures. One unsafe lexical reinterpretation was found, so
+  this run is not a production result.
 - `generation/pilot_15q`: last completed valid 15-question GPT-OSS-20B run.
 - `claim_audit/pilot_15q`: matching atomic claim verification output.
 - `qualitative/pilot_15q_steps08_12.md`: readable question-by-question inspection.

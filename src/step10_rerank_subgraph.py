@@ -252,6 +252,20 @@ def rerank_subgraph(
             )
             and not unrelated_condition_mismatch
         )
+        cross_encoder_score = float(
+            item.metadata.get("cross_encoder_score") or 0.0
+        )
+        cross_encoder_support = bool(
+            item.metadata.get("cross_encoder_rescue")
+            and cross_encoder_score
+            >= config.qa_corpus.cross_encoder_min_score
+            and (
+                concept_floor == 0.0
+                or concept_coverage >= concept_floor
+            )
+            and not anatomy_mismatch
+            and not unrelated_condition_mismatch
+        )
         if strong_semantic_match and not anatomy_mismatch:
             semantic_answer_relevance = (
                 0.55 * vector_similarity
@@ -259,6 +273,13 @@ def rerank_subgraph(
                 + 0.20 * evidence_intent_support
             )
             answer_relevance = max(answer_relevance, semantic_answer_relevance)
+        if cross_encoder_support:
+            answer_relevance = max(
+                answer_relevance,
+                0.60 * cross_encoder_score
+                + 0.20 * concept_coverage
+                + 0.20 * evidence_intent_support,
+            )
         if direct_question_anchor:
             answer_relevance = max(
                 answer_relevance,
@@ -298,6 +319,15 @@ def rerank_subgraph(
             - (0.30 if unrelated_condition_mismatch else 0.0)
             - (0.10 if generic_match else 0.0)
         )
+        if cross_encoder_support:
+            cross_weight = max(
+                0.0,
+                min(1.0, config.qa_corpus.cross_encoder_weight),
+            )
+            score = (
+                (1.0 - cross_weight) * score
+                + cross_weight * cross_encoder_score
+            )
         metadata = dict(item.metadata)
         metadata.update(
             {
@@ -313,6 +343,8 @@ def rerank_subgraph(
                 or ("vector" if inferred_vector_candidate else "graph"),
                 "vector_similarity": round(vector_similarity, 6),
                 "strong_semantic_match": strong_semantic_match,
+                "cross_encoder_support": cross_encoder_support,
+                "cross_encoder_score": round(cross_encoder_score, 6),
                 "exact_question_match": exact_question_match,
                 "direct_question_anchor": direct_question_anchor,
                 "answer_relevance": round(max(0.0, min(1.0, answer_relevance)), 6),

@@ -26,6 +26,11 @@ INSUFFICIENCY_MARKERS = (
     "لا توجد أدلة", "لا توجد معلومات", "لا توجد بيانات", "لا يوجد دليل",
     "لا يمكن تحديد", "لا يمكننا تأكيد", "لا يمكن تأكيد", "غير كافية", "غير كافي",
 )
+EVIDENCE_ADAPTIVE_MODES = {
+    "strong_direct_evidence",
+    "partial_or_mixed_evidence",
+    "structured_claims_v3_1",
+}
 
 
 def is_non_factual_limitation(text: str) -> bool:
@@ -59,7 +64,15 @@ def extract_claims(answer: GeneratedAnswer) -> list[AnswerClaim]:
         claims: list[AnswerClaim] = []
         seen: set[str] = set()
         for claim in answer.claims:
-            for atomic_claim in split_atomic_claim(claim):
+            # Structured Step 12 profiles validate self-contained claims with
+            # one citation each. Splitting again can detach a test, treatment,
+            # or recommendation from its disease or symptom.
+            atomic_claims = (
+                [claim]
+                if answer.generation_mode in EVIDENCE_ADAPTIVE_MODES
+                else split_atomic_claim(claim)
+            )
+            for atomic_claim in atomic_claims:
                 if (
                     atomic_claim.claim not in seen
                     and not is_non_factual_limitation(atomic_claim.claim)

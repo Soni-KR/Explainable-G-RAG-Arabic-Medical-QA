@@ -210,6 +210,9 @@ class GeneratedAnswer:
     limitations: list[str] = field(default_factory=list)
     model: str = ""
     prompt_version: str = ""
+    generation_mode: str = ""
+    generation_evidence_ids: list[str] = field(default_factory=list)
+    generation_mode_reason: str = ""
     generation_status: str = "generated"
     fallback_type: str = ""
     fallback_reason: str = ""

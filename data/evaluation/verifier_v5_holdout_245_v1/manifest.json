@@ -1,0 +1,24 @@
+{
+  "status": "pending_human_annotation",
+  "claim_count": 245,
+  "query_count": 119,
+  "query_grouped_folds": 5,
+  "fold_claim_counts": {
+    "1": 58,
+    "2": 30,
+    "3": 49,
+    "4": 56,
+    "5": 52
+  },
+  "deterministic_status_counts_are_metadata_only": {
+    "supported": 69,
+    "unsupported": 162,
+    "weakly_supported": 14
+  },
+  "source_runs": [
+    "outputs/evaluation/generation/expA_v31_ahd_reference_100_20260729/full_pipeline.jsonl",
+    "outputs/evaluation/generation/expA_v31_entity_gt_100_20260729/full_pipeline.jsonl"
+  ],
+  "prior_81_labels_included": false,
+  "human_label_fields_blank": true
+}

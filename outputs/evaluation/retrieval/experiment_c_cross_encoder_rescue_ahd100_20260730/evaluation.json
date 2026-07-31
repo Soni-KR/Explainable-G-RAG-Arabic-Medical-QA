@@ -1,0 +1,117 @@
+{
+  "status": "complete",
+  "experiment": "conditional_cross_encoder_rescue",
+  "baseline": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\retrieval\\frozen_prod_ahd_reference_100_20260728\\full_hybrid.jsonl",
+  "candidate": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\retrieval\\experiment_c_cross_encoder_rescue_ahd100_20260730\\full_hybrid_cross_encoder_rescue.jsonl",
+  "annotations": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\data\\evaluation\\candidate_relevance_combined_pool_v2_replay_ready.csv",
+  "missing_labels_policy": "unavailable_not_zero",
+  "baseline_context": {
+    "query_count": 100,
+    "context_states": {
+      "insufficient_context": 29,
+      "partial_context": 60,
+      "strong_direct_context": 11
+    },
+    "mean_context_items": 2.58,
+    "known_useful_context_queries": 52,
+    "known_direct_context_queries": 25,
+    "selected_judged_items": 173,
+    "selected_unjudged_items": 85,
+    "known_useful_precision": 0.554913,
+    "known_direct_precision": 0.184971,
+    "selected_mismatch_flags": {},
+    "latency_ms": {
+      "mean": 1203.82791,
+      "median": 1263.8535,
+      "p95": 1821.453,
+      "total": 120382.791
+    }
+  },
+  "candidate_context": {
+    "query_count": 100,
+    "context_states": {
+      "insufficient_context": 27,
+      "partial_context": 58,
+      "strong_direct_context": 15
+    },
+    "mean_context_items": 2.89,
+    "known_useful_context_queries": 53,
+    "known_direct_context_queries": 26,
+    "selected_judged_items": 170,
+    "selected_unjudged_items": 119,
+    "known_useful_precision": 0.570588,
+    "known_direct_precision": 0.2,
+    "selected_mismatch_flags": {},
+    "latency_ms": {
+      "mean": 4283.23802,
+      "median": 4157.978,
+      "p95": 7244.527,
+      "total": 428323.802
+    }
+  },
+  "state_transitions": {
+    "insufficient_context->insufficient_context": 27,
+    "insufficient_context->partial_context": 2,
+    "partial_context->partial_context": 56,
+    "partial_context->strong_direct_context": 4,
+    "strong_direct_context->strong_direct_context": 11
+  },
+  "baseline_human_pool": {
+    "status": "computed_with_incomplete_judgments",
+    "query_count": 100,
+    "queries_with_confirmed_direct_candidate": 49,
+    "confirmed_direct_hit_at_1_all_queries": 16,
+    "confirmed_direct_hit_at_5_all_queries": 34,
+    "confirmed_direct_hit_at_10_all_queries": 42,
+    "confirmed_direct_recall_at_5_answerable_queries": 0.693878,
+    "confirmed_direct_recall_at_10_answerable_queries": 0.857143,
+    "confirmed_direct_mrr_all_queries": 0.247722,
+    "confirmed_useful_hit_at_1_all_queries": 51,
+    "confirmed_useful_hit_at_5_all_queries": 78,
+    "judged_only_ndcg_at_10": 0.558811,
+    "top10_judgment_coverage": 0.468687,
+    "warning": "Unjudged candidates were not converted to label 0. Confirmed-hit figures are lower bounds; judged-only nDCG compresses unjudged rows."
+  },
+  "candidate_human_pool": {
+    "status": "computed_with_incomplete_judgments",
+    "query_count": 100,
+    "queries_with_confirmed_direct_candidate": 49,
+    "confirmed_direct_hit_at_1_all_queries": 13,
+    "confirmed_direct_hit_at_5_all_queries": 34,
+    "confirmed_direct_hit_at_10_all_queries": 38,
+    "confirmed_direct_recall_at_5_answerable_queries": 0.693878,
+    "confirmed_direct_recall_at_10_answerable_queries": 0.77551,
+    "confirmed_direct_mrr_all_queries": 0.224104,
+    "confirmed_useful_hit_at_1_all_queries": 50,
+    "confirmed_useful_hit_at_5_all_queries": 75,
+    "judged_only_ndcg_at_10": 0.539791,
+    "top10_judgment_coverage": 0.430303,
+    "warning": "Unjudged candidates were not converted to label 0. Confirmed-hit figures are lower bounds; judged-only nDCG compresses unjudged rows."
+  },
+  "rescue_runtime": {
+    "statuses": {
+      "not_run": 38,
+      "ok": 62
+    },
+    "triggers": {
+      "empty_context": 22,
+      "non_medical_or_unclear": 28,
+      "strong_context_already_available": 10,
+      "weak_context": 40
+    },
+    "successful_rescues": 62,
+    "candidate_count": 1844,
+    "rescored_count": 1844,
+    "latency_ms": 202983.795
+  },
+  "acceptance_checks": {
+    "direct_hit_at_1_not_lower": false,
+    "direct_recall_at_5_not_lower": true,
+    "direct_recall_at_10_not_lower": false,
+    "direct_mrr_not_lower": false,
+    "useful_hit_at_5_not_lower": false
+  },
+  "accepted": false,
+  "production_decision": "keep_disabled",
+  "supplemental_graph_used": false
+}

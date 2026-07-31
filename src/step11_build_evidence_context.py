@@ -46,12 +46,21 @@ def item_answer_relevance(item: RetrievedEvidence, query: str) -> float:
 
 
 def has_strong_semantic_support(item: RetrievedEvidence, config: AppConfig) -> bool:
-    """Recognize vetted vector evidence without weakening hard safety gates."""
-    return bool(
+    """Recognize vetted vector or rescue evidence behind hard safety gates."""
+    vector_support = bool(
         item.metadata.get("strong_semantic_match")
         and float(item.metadata.get("vector_similarity") or 0.0)
         >= config.retrieval.context_semantic_min_score
+    )
+    cross_encoder_support = bool(
+        item.metadata.get("cross_encoder_support")
+        and float(item.metadata.get("cross_encoder_score") or 0.0)
+        >= config.qa_corpus.cross_encoder_min_score
+    )
+    return bool(
+        (vector_support or cross_encoder_support)
         and not item.metadata.get("anatomy_mismatch")
+        and not item.metadata.get("unrelated_condition_mismatch")
     )
 
 

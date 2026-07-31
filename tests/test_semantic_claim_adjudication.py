@@ -8,6 +8,7 @@ from pathlib import Path
 from src.config import AppConfig, ClaimAdjudicationConfig
 from src.models import AnswerClaim, ClaimVerification, EvidenceContextBundle
 from src.step14_semantic_adjudication import (
+    ClaimAdjudicationError,
     SemanticClaimAdjudicator,
     adjudication_fingerprint,
     build_adjudication_cases,
@@ -15,6 +16,7 @@ from src.step14_semantic_adjudication import (
     eligible_for_semantic_adjudication,
     validate_response,
 )
+from src.step14_verify_claims import support_score
 
 
 class SemanticClaimAdjudicationTests(unittest.TestCase):
@@ -77,6 +79,75 @@ class SemanticClaimAdjudicationTests(unittest.TestCase):
                     failures=["intent_mismatch", "number_mismatch"]
                 )
             )
+        )
+        self.assertFalse(
+            eligible_for_semantic_adjudication(
+                self.make_verification(failures=["anatomy_mismatch"])
+            )
+        )
+
+    def test_prompt_requires_top_level_decisions_object(self) -> None:
+        messages = build_messages(
+            self.make_context(),
+            [
+                {
+                    "claim_id": "C1",
+                    "claim": "ادعاء طبي.",
+                    "evidence_segments": ["دليل طبي."],
+                }
+            ],
+        )
+
+        system = messages[0]["content"]
+        self.assertIn('{"decisions": [{...}]}', system)
+        self.assertIn("Never return the decisions array by itself", system)
+
+    def test_adjudication_case_segments_have_stable_tie_order(self) -> None:
+        context = EvidenceContextBundle(
+            query="ما العلاج؟",
+            reformulated_query="ما العلاج؟",
+            evidence_items=[
+                {
+                    "evidence_id": "E1",
+                    "qa_id": "qa1",
+                    "source_answer": "ب ب. أ أ.",
+                    "relation_ids": [],
+                }
+            ],
+            allowed_evidence_ids=["E1"],
+            allowed_qa_ids=["qa1"],
+        )
+        verification = ClaimVerification(
+            claim=AnswerClaim("ج ج", ["E1"], ["qa1"]),
+            status="unsupported",
+            support_score=1.0,
+            question_relevance=0.75,
+            best_evidence_id="E1",
+            failed_checks=["intent_mismatch"],
+        )
+
+        first, _ = build_adjudication_cases(
+            [verification],
+            context,
+            support_floor=0.0,
+        )
+        second, _ = build_adjudication_cases(
+            [verification],
+            context,
+            support_floor=0.0,
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(
+            first[0]["evidence_segments"],
+            sorted(
+                first[0]["evidence_segments"],
+                key=lambda segment: (
+                    -support_score(verification.claim.claim, segment),
+                    -len(segment),
+                    segment,
+                ),
+            ),
         )
 
     def test_response_fails_closed_on_inconsistent_retain_flag(self) -> None:
@@ -369,6 +440,113 @@ class SemanticClaimAdjudicationTests(unittest.TestCase):
 
         self.assertTrue(audit["cache_hit"])
         self.assertEqual(updated, [verification])
+
+    def test_cache_only_mode_fails_before_an_api_call(self) -> None:
+        config = AppConfig(
+            claim_adjudication=ClaimAdjudicationConfig(enabled=True)
+        )
+        adjudicator = SemanticClaimAdjudicator(
+            config,
+            cache_path=None,
+            raise_on_error=True,
+            allow_api_calls=False,
+        )
+
+        with self.assertRaisesRegex(
+            ClaimAdjudicationError,
+            "cache miss in cache-only mode",
+        ):
+            adjudicator.adjudicate(
+                [self.make_verification(failures=["intent_mismatch"])],
+                self.make_context(),
+            )
+
+        self.assertEqual(adjudicator.api_calls, 0)
+
+    def test_post_semantic_safety_gate_blocks_bare_reassurance(self) -> None:
+        context = EvidenceContextBundle(
+            query="أشعر بصعوبة في التنفس وألم قرب القلب.",
+            reformulated_query="هل تستدعي صعوبة التنفس وألم الصدر القلق؟",
+            evidence_items=[
+                {
+                    "evidence_id": "E1",
+                    "qa_id": "qa1",
+                    "source_answer": (
+                        "لا داعي للقلق لكن لا بد من فحص طبي سريري."
+                    ),
+                    "relation_ids": [],
+                }
+            ],
+            allowed_evidence_ids=["E1"],
+            allowed_qa_ids=["qa1"],
+        )
+        verification = ClaimVerification(
+            claim=AnswerClaim("لا داعي للقلق", ["E1"], ["qa1"]),
+            status="unsupported",
+            support_score=1.0,
+            question_relevance=0.75,
+            best_evidence_id="E1",
+            failed_checks=["intent_mismatch"],
+        )
+        config = AppConfig(
+            claim_adjudication=ClaimAdjudicationConfig(enabled=True)
+        )
+        cases, _ = build_adjudication_cases([verification], context)
+        fingerprint = adjudication_fingerprint(
+            context,
+            cases,
+            config.claim_adjudication,
+        )
+        response = {
+            "decisions": [
+                {
+                    "claim_id": "C1",
+                    "evidence_support": "supported",
+                    "query_relevance": "relevant",
+                    "intent_match": True,
+                    "concept_match": True,
+                    "anatomy_match": "not_applicable",
+                    "answer_contribution": "direct_answer",
+                    "clinical_relation_preserved": True,
+                    "named_entity_identity_preserved": True,
+                    "patient_context_compatible": True,
+                    "should_retain": True,
+                    "reason": "The evidence contains this reassurance.",
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            cache_path = Path(directory) / "cache.jsonl"
+            cache_path.write_text(
+                json.dumps(
+                    {
+                        "fingerprint": fingerprint,
+                        "status": "ok",
+                        "response": response,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            adjudicator = SemanticClaimAdjudicator(
+                config,
+                cache_path=cache_path,
+                raise_on_error=True,
+            )
+            updated, audit = adjudicator.adjudicate(
+                [verification],
+                context,
+            )
+
+        self.assertEqual(updated[0].status, "unsupported")
+        self.assertIn(
+            "bare_reassurance_without_medical_answer",
+            updated[0].failed_checks,
+        )
+        self.assertEqual(audit["model_retained_claims"], 1)
+        self.assertEqual(audit["post_safety_gate_blocked_claims"], 1)
+        self.assertEqual(audit["retained_claims"], 0)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,20 @@
+{
+  "analysis_only": true,
+  "pipeline_steps_rerun": [],
+  "exact_frozen_context_required": true,
+  "verifier_v5_enabled": false,
+  "semantic_adjudication_enabled": false,
+  "retrieval_rescue_enabled": false,
+  "inputs": {
+    "v3_a": "outputs/evaluation/generation/frozen_prod_ahd_reference_100_steps12_17_network_20260728/full_pipeline.jsonl",
+    "v31_a": "outputs/evaluation/generation/expA_v31_ahd_reference_100_20260729/full_pipeline.jsonl",
+    "v3_b": "outputs/evaluation/generation/frozen_prod_entity_gt_100_steps12_17_network_20260728/full_pipeline.jsonl",
+    "v31_b": "outputs/evaluation/generation/expA_v31_entity_gt_100_20260729/full_pipeline.jsonl"
+  },
+  "outputs": {
+    "comparison_metrics": "outputs/evaluation/generation/experiment_a_v3_vs_v31_200q_20260729/comparison_metrics.json",
+    "differential_claim_review_queue": "outputs/evaluation/generation/experiment_a_v3_vs_v31_200q_20260729/differential_claim_review_queue.csv",
+    "experiment_report": "outputs/evaluation/generation/experiment_a_v3_vs_v31_200q_20260729/EXPERIMENT_A.md",
+    "manifest": "outputs/evaluation/generation/experiment_a_v3_vs_v31_200q_20260729/manifest.json"
+  }
+}

@@ -1,0 +1,695 @@
+{
+  "cohort_a": {
+    "v3": {
+      "run_file": "outputs/evaluation/generation/frozen_prod_ahd_reference_100_steps12_17_network_20260728/full_pipeline.jsonl",
+      "queries": 100,
+      "generation_status": {
+        "fallback": 34,
+        "generated": 66
+      },
+      "answerability": {
+        "fully_answerable": 2,
+        "generation_unavailable": 3,
+        "insufficient_evidence": 73,
+        "partially_answerable": 9,
+        "supported_but_incomplete": 13
+      },
+      "substantive_answers": 24,
+      "surviving_claims": 37,
+      "pre_mitigation_claims": {
+        "total": 148,
+        "status_counts": {
+          "supported": 37,
+          "unsupported": 105,
+          "weakly_supported": 6
+        },
+        "supported_claim_rate": 0.25
+      },
+      "technical_failures": 3,
+      "schema_failures": 2,
+      "citation_validity": 1.0,
+      "citation_count": 40,
+      "bertscore": {
+        "status": "computed",
+        "evaluated_query_count": 24,
+        "bertscore_f1": 0.677259
+      },
+      "latency_ms": {
+        "end_to_end": {
+          "mean": 17379.75828,
+          "median": 19583.087,
+          "p95": 35220.62005,
+          "total": 1737975.828
+        },
+        "step08_query_understanding": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean": 0.1002,
+          "median": 0.085,
+          "p95": 0.19145,
+          "total": 10.02
+        },
+        "step11_context_construction": {
+          "mean": 90.62685,
+          "median": 73.428,
+          "p95": 202.07095,
+          "total": 9062.685
+        },
+        "step12_answer_generation": {
+          "mean": 4944.05423,
+          "median": 876.2665,
+          "p95": 24385.8817,
+          "total": 494405.423
+        },
+        "step13_claim_extraction": {
+          "mean": 0.03183,
+          "median": 0.03,
+          "p95": 0.08115,
+          "total": 3.183
+        },
+        "step14_claim_verification": {
+          "mean": 4.42181,
+          "median": 1.9215,
+          "p95": 17.54935,
+          "total": 442.181
+        },
+        "step15_hallucination_mitigation": {
+          "mean": 0.59777,
+          "median": 0.273,
+          "p95": 1.89755,
+          "total": 59.777
+        },
+        "step16_reliability_scoring": {
+          "mean": 0.0217,
+          "median": 0.019,
+          "p95": 0.03605,
+          "total": 2.17
+        }
+      }
+    },
+    "v4": {
+      "run_file": "outputs/evaluation/generation/evidence_adaptive_v4_2_ahd_reference_100_20260729/full_pipeline.jsonl",
+      "queries": 100,
+      "generation_status": {
+        "fallback": 31,
+        "generated": 69
+      },
+      "answerability": {
+        "fully_answerable": 3,
+        "insufficient_evidence": 75,
+        "partially_answerable": 6,
+        "supported_but_incomplete": 16
+      },
+      "substantive_answers": 25,
+      "surviving_claims": 31,
+      "pre_mitigation_claims": {
+        "total": 100,
+        "status_counts": {
+          "supported": 31,
+          "unsupported": 62,
+          "weakly_supported": 7
+        },
+        "supported_claim_rate": 0.31
+      },
+      "technical_failures": 0,
+      "schema_failures": 0,
+      "citation_validity": 1.0,
+      "citation_count": 31,
+      "bertscore": {
+        "status": "computed",
+        "evaluated_query_count": 25,
+        "bertscore_f1": 0.679175
+      },
+      "latency_ms": {
+        "end_to_end": {
+          "mean": 12139.64331,
+          "median": 17840.274,
+          "p95": 18173.68365,
+          "total": 1213964.331
+        },
+        "step08_query_understanding": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step11_context_construction": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step12_answer_generation": {
+          "mean": 432.03484,
+          "median": 574.5555,
+          "p95": 777.15555,
+          "total": 43203.484
+        },
+        "step13_claim_extraction": {
+          "mean": 0.01333,
+          "median": 0.013,
+          "p95": 0.033,
+          "total": 1.333
+        },
+        "step14_claim_verification": {
+          "mean": 3.5209,
+          "median": 1.826,
+          "p95": 13.5144,
+          "total": 352.09
+        },
+        "step15_hallucination_mitigation": {
+          "mean": 0.70455,
+          "median": 0.3225,
+          "p95": 3.3927,
+          "total": 70.455
+        },
+        "step16_reliability_scoring": {
+          "mean": 0.01925,
+          "median": 0.018,
+          "p95": 0.0281,
+          "total": 1.925
+        }
+      }
+    },
+    "delta": {
+      "substantive_answers": 1,
+      "surviving_claims": -6,
+      "pre_mitigation_supported_claim_rate": 0.06,
+      "technical_failures": -3,
+      "schema_failures": -2,
+      "citation_validity": 0.0,
+      "bertscore_f1": 0.001916
+    }
+  },
+  "cohort_b": {
+    "v3": {
+      "run_file": "outputs/evaluation/generation/frozen_prod_entity_gt_100_steps12_17_network_20260728/full_pipeline.jsonl",
+      "queries": 100,
+      "generation_status": {
+        "fallback": 33,
+        "generated": 67
+      },
+      "answerability": {
+        "fully_answerable": 1,
+        "generation_unavailable": 3,
+        "insufficient_evidence": 72,
+        "partially_answerable": 11,
+        "supported_but_incomplete": 13
+      },
+      "substantive_answers": 25,
+      "surviving_claims": 35,
+      "pre_mitigation_claims": {
+        "total": 144,
+        "status_counts": {
+          "supported": 35,
+          "unsupported": 107,
+          "weakly_supported": 2
+        },
+        "supported_claim_rate": 0.243056
+      },
+      "technical_failures": 3,
+      "schema_failures": 1,
+      "citation_validity": 1.0,
+      "citation_count": 39,
+      "bertscore": {
+        "status": "computed",
+        "evaluated_query_count": 25,
+        "bertscore_f1": 0.664972
+      },
+      "latency_ms": {
+        "end_to_end": {
+          "mean": 24039.39937,
+          "median": 34755.1645,
+          "p95": 35749.6943,
+          "total": 2403939.937
+        },
+        "step08_query_understanding": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean": 0.18411,
+          "median": 0.1655,
+          "p95": 0.3103,
+          "total": 18.411
+        },
+        "step11_context_construction": {
+          "mean": 63.75739,
+          "median": 46.858,
+          "p95": 150.7823,
+          "total": 6375.739
+        },
+        "step12_answer_generation": {
+          "mean": 924.78959,
+          "median": 786.32,
+          "p95": 1453.4327,
+          "total": 92478.959
+        },
+        "step13_claim_extraction": {
+          "mean": 0.04754,
+          "median": 0.038,
+          "p95": 0.1555,
+          "total": 4.754
+        },
+        "step14_claim_verification": {
+          "mean": 5.68007,
+          "median": 2.919,
+          "p95": 16.83465,
+          "total": 568.007
+        },
+        "step15_hallucination_mitigation": {
+          "mean": 0.41168,
+          "median": 0.212,
+          "p95": 1.2242,
+          "total": 41.168
+        },
+        "step16_reliability_scoring": {
+          "mean": 0.02376,
+          "median": 0.02,
+          "p95": 0.044,
+          "total": 2.376
+        }
+      }
+    },
+    "v4": {
+      "run_file": "outputs/evaluation/generation/evidence_adaptive_v4_2_entity_ground_truth_100_20260729/full_pipeline.jsonl",
+      "queries": 100,
+      "generation_status": {
+        "fallback": 30,
+        "generated": 70
+      },
+      "answerability": {
+        "fully_answerable": 4,
+        "insufficient_evidence": 79,
+        "partially_answerable": 7,
+        "supported_but_incomplete": 10
+      },
+      "substantive_answers": 21,
+      "surviving_claims": 25,
+      "pre_mitigation_claims": {
+        "total": 106,
+        "status_counts": {
+          "supported": 25,
+          "unsupported": 75,
+          "weakly_supported": 6
+        },
+        "supported_claim_rate": 0.235849
+      },
+      "technical_failures": 0,
+      "schema_failures": 0,
+      "citation_validity": 1.0,
+      "citation_count": 25,
+      "bertscore": {
+        "status": "computed",
+        "evaluated_query_count": 21,
+        "bertscore_f1": 0.670413
+      },
+      "latency_ms": {
+        "end_to_end": {
+          "mean": 11105.68247,
+          "median": 17780.9305,
+          "p95": 18199.75095,
+          "total": 1110568.247
+        },
+        "step08_query_understanding": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step11_context_construction": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step12_answer_generation": {
+          "mean": 441.04377,
+          "median": 559.6135,
+          "p95": 844.77315,
+          "total": 44104.377
+        },
+        "step13_claim_extraction": {
+          "mean": 0.01244,
+          "median": 0.012,
+          "p95": 0.0331,
+          "total": 1.244
+        },
+        "step14_claim_verification": {
+          "mean": 3.51605,
+          "median": 1.9635,
+          "p95": 12.8181,
+          "total": 351.605
+        },
+        "step15_hallucination_mitigation": {
+          "mean": 0.32736,
+          "median": 0.1825,
+          "p95": 1.22995,
+          "total": 32.736
+        },
+        "step16_reliability_scoring": {
+          "mean": 0.01874,
+          "median": 0.017,
+          "p95": 0.02805,
+          "total": 1.874
+        }
+      }
+    },
+    "delta": {
+      "substantive_answers": -4,
+      "surviving_claims": -10,
+      "pre_mitigation_supported_claim_rate": -0.007207,
+      "technical_failures": -3,
+      "schema_failures": -1,
+      "citation_validity": 0.0,
+      "bertscore_f1": 0.005441
+    }
+  },
+  "aggregate_200": {
+    "v3": {
+      "queries": 200,
+      "generation_status": {
+        "fallback": 67,
+        "generated": 133
+      },
+      "answerability": {
+        "fully_answerable": 3,
+        "generation_unavailable": 6,
+        "insufficient_evidence": 145,
+        "partially_answerable": 20,
+        "supported_but_incomplete": 26
+      },
+      "substantive_answers": 49,
+      "surviving_claims": 72,
+      "pre_mitigation_claims": {
+        "total": 292,
+        "status_counts": {
+          "supported": 72,
+          "unsupported": 212,
+          "weakly_supported": 8
+        },
+        "supported_claim_rate": 0.246575
+      },
+      "technical_failures": 6,
+      "schema_failures": 3,
+      "citation_validity": 1.0,
+      "bertscore": {
+        "status": "computed",
+        "evaluated_query_count": 49,
+        "bertscore_f1": 0.67099
+      },
+      "latency_stages": [
+        "end_to_end",
+        "step08_query_understanding",
+        "step08_retrieval_planning",
+        "step09_hybrid_retrieval",
+        "step10_subgraph_reranking",
+        "step11_context_construction",
+        "step12_answer_generation",
+        "step13_claim_extraction",
+        "step14_claim_verification",
+        "step15_hallucination_mitigation",
+        "step16_reliability_scoring"
+      ],
+      "latency_ms": {
+        "end_to_end": {
+          "mean": 20709.578825,
+          "median": 27495.34,
+          "p95": 35433.75315,
+          "total": 4141915.765
+        },
+        "step08_query_understanding": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean": 0.142155,
+          "median": 0.132,
+          "p95": 0.29105,
+          "total": 28.431
+        },
+        "step11_context_construction": {
+          "mean": 77.19212,
+          "median": 57.5835,
+          "p95": 185.37535,
+          "total": 15438.424
+        },
+        "step12_answer_generation": {
+          "mean": 2934.42191,
+          "median": 820.7575,
+          "p95": 20073.35755,
+          "total": 586884.382
+        },
+        "step13_claim_extraction": {
+          "mean": 0.039685,
+          "median": 0.034,
+          "p95": 0.1242,
+          "total": 7.937
+        },
+        "step14_claim_verification": {
+          "mean": 5.05094,
+          "median": 2.201,
+          "p95": 17.54935,
+          "total": 1010.188
+        },
+        "step15_hallucination_mitigation": {
+          "mean": 0.504725,
+          "median": 0.2545,
+          "p95": 1.5729,
+          "total": 100.945
+        },
+        "step16_reliability_scoring": {
+          "mean": 0.02273,
+          "median": 0.019,
+          "p95": 0.043,
+          "total": 4.546
+        }
+      }
+    },
+    "v4": {
+      "queries": 200,
+      "generation_status": {
+        "fallback": 61,
+        "generated": 139
+      },
+      "answerability": {
+        "fully_answerable": 7,
+        "insufficient_evidence": 154,
+        "partially_answerable": 13,
+        "supported_but_incomplete": 26
+      },
+      "substantive_answers": 46,
+      "surviving_claims": 56,
+      "pre_mitigation_claims": {
+        "total": 206,
+        "status_counts": {
+          "supported": 56,
+          "unsupported": 137,
+          "weakly_supported": 13
+        },
+        "supported_claim_rate": 0.271845
+      },
+      "technical_failures": 0,
+      "schema_failures": 0,
+      "citation_validity": 1.0,
+      "bertscore": {
+        "status": "computed",
+        "evaluated_query_count": 46,
+        "bertscore_f1": 0.675175
+      },
+      "latency_stages": [
+        "end_to_end",
+        "step08_query_understanding",
+        "step08_retrieval_planning",
+        "step09_hybrid_retrieval",
+        "step10_subgraph_reranking",
+        "step11_context_construction",
+        "step12_answer_generation",
+        "step13_claim_extraction",
+        "step14_claim_verification",
+        "step15_hallucination_mitigation",
+        "step16_reliability_scoring"
+      ],
+      "latency_ms": {
+        "end_to_end": {
+          "mean": 11622.66289,
+          "median": 17818.775,
+          "p95": 18191.95255,
+          "total": 2324532.578
+        },
+        "step08_query_understanding": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step11_context_construction": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step12_answer_generation": {
+          "mean": 436.539305,
+          "median": 565.168,
+          "p95": 813.80725,
+          "total": 87307.861
+        },
+        "step13_claim_extraction": {
+          "mean": 0.012885,
+          "median": 0.012,
+          "p95": 0.033,
+          "total": 2.577
+        },
+        "step14_claim_verification": {
+          "mean": 3.518475,
+          "median": 1.84,
+          "p95": 13.39665,
+          "total": 703.695
+        },
+        "step15_hallucination_mitigation": {
+          "mean": 0.515955,
+          "median": 0.238,
+          "p95": 2.01485,
+          "total": 103.191
+        },
+        "step16_reliability_scoring": {
+          "mean": 0.018995,
+          "median": 0.017,
+          "p95": 0.02805,
+          "total": 3.799
+        }
+      }
+    },
+    "delta": {
+      "substantive_answers": -3,
+      "surviving_claims": -16,
+      "pre_mitigation_supported_claim_rate": 0.02527,
+      "technical_failures": -6,
+      "schema_failures": -3,
+      "citation_validity": 0.0,
+      "bertscore_f1": 0.004185
+    }
+  },
+  "differential_review": {
+    "differential_claims": 50,
+    "review_decisions": {
+      "equivalent_to_v3_kept": 26,
+      "safe": 11,
+      "unsafe": 13
+    },
+    "automatic_invalid_citations": 0,
+    "automatic_verifier_failures": 0,
+    "review_complete": true,
+    "unsafe_claims": 13
+  },
+  "decision": {
+    "status": "KEEP_V3_AS_FINAL",
+    "reason": "v4 reduced substantive answers from 49 to 46 and surviving claims from 72 to 56; the differential review also found 13 unsafe claims. Retain v3 and record v4 as an unsuccessful generation ablation."
+  },
+  "artifacts": {
+    "comparison_metrics": "outputs/evaluation/generation/evidence_adaptive_v4_2_comparison_200q_20260729/comparison_metrics.json",
+    "differential_safety_audit": "outputs/evaluation/generation/evidence_adaptive_v4_2_comparison_200q_20260729/differential_safety_audit.csv",
+    "differential_review_decisions": "outputs/evaluation/generation/evidence_adaptive_v4_2_comparison_200q_20260729/differential_review_decisions.json",
+    "final_comparison": "outputs/evaluation/generation/evidence_adaptive_v4_2_comparison_200q_20260729/FINAL_COMPARISON.md",
+    "manifest": "outputs/evaluation/generation/evidence_adaptive_v4_2_comparison_200q_20260729/manifest.json"
+  }
+}

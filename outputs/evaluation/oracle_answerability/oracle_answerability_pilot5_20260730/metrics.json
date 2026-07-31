@@ -1,0 +1,23 @@
+{
+  "status": "complete",
+  "expected_empty_context_queries": 5,
+  "completed_queries": 5,
+  "failure_class_counts": {
+    "equivalent_evidence_exists_retriever_miss": 1,
+    "only_broad_or_mismatched_evidence_exists": 4
+  },
+  "confidence_counts": {
+    "high": 1,
+    "low": 4
+  },
+  "manual_review_queries": 4,
+  "strong_equivalent_queries": 1,
+  "exact_reference_duplicate_queries": 1,
+  "latency_ms": {
+    "mean": 12894.856,
+    "median": 12576.947,
+    "p95": 17504.608,
+    "total": 64474.28
+  },
+  "scope_warning": "The oracle searches the full SQLite answer FTS index and then E5-reranks its shortlist. Absence from this shortlist is not proof of absence from the full semantic answer space."
+}

@@ -1,0 +1,24 @@
+{"status": "ok", "progress": "1/55", "query_id": "entitygtv1_016", "claims": 2, "cache_hit": false}
+{"status": "ok", "progress": "2/55", "query_id": "entitygtv1_093", "claims": 1, "cache_hit": false}
+{"status": "ok", "progress": "3/55", "query_id": "entitygtv1_064", "claims": 1, "cache_hit": false}
+{"status": "ok", "progress": "4/55", "query_id": "entitygtv1_053", "claims": 1, "cache_hit": false}
+{"status": "stopped_adjudication_error", "progress": "5/55", "query_id": "entitygtv1_092", "cache": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\cache\\verifier_v5_semantic_all81_20260729\\semantic_claim_adjudication.jsonl", "error": "Semantic claim adjudication failed: HTTPError 400; x-ratelimit-limit-requests=1000; x-ratelimit-limit-tokens=8000; x-ratelimit-remaining-requests=888; x-ratelimit-remaining-tokens=6961; x-ratelimit-reset-requests=2h41m16.8s; x-ratelimit-reset-tokens=7.792s; body={\"error\":{\"message\":\"Generated JSON does not match the expected schema. Please adjust your prompt. See 'failed_generation' for more details. Error: jsonschema: '' does not validate with /type: expected object, but got array\",\"type\":\"invalid_request_error\",\"code\":\"json_validate_failed\",\"failed_generation\":\"[\\n{\\n \\\"claim_id\\\": \\\"C1\\\",\\n \\\"evidence_support\\\": \\\"supported\\\",\\n \\\"query_relevance\\\": \\\"relevant\\\",\\n \\\"intent_match\\\": true,\\n \\\"concept_match\\\": true,\\n \\\"anatomy_match\\\": \\\"not_applicab"}
+{
+  "status": "partial",
+  "output": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\claim_verifier\\verifier_v5_semantic_all81_20260729",
+  "cache": "C:\\Users\\mega0\\Desktop\\STAGE 2eme\\2\\AHD Arabic Healthcare Dataset\\AHD Arabic Healthcare Dataset\\csv files\\outputs\\evaluation\\cache\\verifier_v5_semantic_all81_20260729\\semantic_claim_adjudication.jsonl",
+  "metrics": {
+    "rows": 5,
+    "true_positive": 5,
+    "true_negative": 0,
+    "false_positive": 0,
+    "false_negative": 0,
+    "accuracy": 1.0,
+    "precision_retain": 1.0,
+    "recall_retain": 1.0,
+    "f1_retain": 1.0,
+    "specificity_remove": 0.0
+  },
+  "api_calls": 5,
+  "cache_hits": 0
+}

@@ -24,8 +24,9 @@ outputs/**/**/*requests*.jsonl
 .git_empty_backup/
 archive/_obsolete_pending_deletion/
 .codex/
-docs/
+docs/*
+!docs/EVIDENCE_ADAPTIVE_GENERATION_V4.md
 neo4j_dump/
-
+aziza-trial/
 # Exploration notebooks
 *.ipynb

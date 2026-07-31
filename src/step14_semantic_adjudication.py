@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-"""Selective semantic review for claims rejected by soft lexical gates.
+"""Selective semantic review for claims rejected by soft relevance gates.
 
 The deterministic verifier remains the first and fallback authority. This
 module only reviews claims whose evidence score passed and whose remaining
-failures are limited to intent, concept, or anatomy heuristics.
+failures are limited to intent or concept heuristics. Anatomy is a hard safety
+gate and is never eligible for semantic override.
 """
 
 import hashlib
@@ -30,13 +31,16 @@ from src.step12_generate_grounded_answer import (
     describe_http_error,
     parse_json_object,
 )
+from src.step14_semantic_safety_gate import (
+    semantic_rescue_safety_failures,
+)
 from src.step14_verify_claims import evidence_candidates, support_score
 
 
 SOFT_ADJUDICATION_CHECKS = {
     "intent_mismatch",
     "claim_query_concept_mismatch",
-    "anatomy_mismatch",
+    "query_relevance_below_threshold",
 }
 EVIDENCE_SUPPORT_VALUES = {"supported", "partial", "unsupported"}
 QUERY_RELEVANCE_VALUES = {"relevant", "partially_relevant", "irrelevant"}
@@ -148,10 +152,16 @@ def _best_evidence_segments(
         for segment in evidence_candidates(text, claim)
         if segment.strip()
     }
+    # The final lexical key makes tied segments stable across Python
+    # processes. Without it, set iteration could change the prompt order and
+    # therefore the append-only cache fingerprint for identical inputs.
     ranked = sorted(
         segments,
-        key=lambda segment: (support_score(claim, segment), len(segment)),
-        reverse=True,
+        key=lambda segment: (
+            -support_score(claim, segment),
+            -len(segment),
+            segment,
+        ),
     )
     return [segment[:max_chars] for segment in ranked[:limit]]
 
@@ -264,8 +274,12 @@ query_relevance is relevant, intent_match and concept_match are true, and
 anatomy_match is not no, answer_contribution is direct_answer,
 clinical_relation_preserved is true, named_entity_identity_preserved is true,
 and patient_context_compatible is true. If any required judgment is uncertain,
-set should_retain=false. Do not answer the medical question. Return only the
-required JSON.
+set should_retain=false. Do not answer the medical question.
+
+The top-level JSON value MUST be an object with exactly one key named
+"decisions". Its value MUST be the array of decision objects:
+{"decisions": [{...}]}
+Never return the decisions array by itself. Return only this JSON object.
 """.strip()
     def redact(text: str) -> str:
         value = EMAIL_RE.sub("[REDACTED_EMAIL]", text)
@@ -449,11 +463,13 @@ class SemanticClaimAdjudicator:
         *,
         cache_path: Path | None = None,
         raise_on_error: bool = False,
+        allow_api_calls: bool = True,
     ) -> None:
         self.app_config = config
         self.config = config.claim_adjudication
         self.cache_path = cache_path
         self.raise_on_error = raise_on_error
+        self.allow_api_calls = allow_api_calls
         self.cache = _load_cache(cache_path)
         self.last_request_at: float | None = None
         self.api_calls = 0
@@ -545,7 +561,10 @@ class SemanticClaimAdjudicator:
             "enabled": self.config.enabled,
             "eligible_claims": len(cases),
             "adjudicated_claims": 0,
+            "model_retained_claims": 0,
             "retained_claims": 0,
+            "post_safety_gate_blocked_claims": 0,
+            "post_safety_gate": [],
             "cache_hit": False,
             "model": self.config.model,
             "prompt_version": self.config.prompt_version,
@@ -567,6 +586,10 @@ class SemanticClaimAdjudicator:
                 self.cache_hits += 1
                 audit["cache_hit"] = True
             else:
+                if not self.allow_api_calls:
+                    raise ClaimAdjudicationError(
+                        "Semantic adjudication cache miss in cache-only mode."
+                    )
                 decisions = self._call_api(context, cases)
                 response = {
                     "decisions": [
@@ -602,11 +625,50 @@ class SemanticClaimAdjudicator:
             verification_by_claim_id[item.claim_id].claim.claim: item
             for item in decisions
         }
+        case_by_claim = {
+            verification_by_claim_id[str(case["claim_id"])].claim.claim: case
+            for case in cases
+        }
+        post_safety_gate: list[dict[str, Any]] = []
         updated: list[ClaimVerification] = []
         for verification in verifications:
             decision = decision_by_claim.get(verification.claim.claim)
             if decision is None or not decision.should_retain:
                 updated.append(verification)
+                continue
+            case = case_by_claim.get(verification.claim.claim, {})
+            safety_failures = semantic_rescue_safety_failures(
+                verification.claim.claim,
+                [
+                    str(segment)
+                    for segment in case.get("evidence_segments", [])
+                ],
+            )
+            if safety_failures:
+                updated.append(
+                    replace(
+                        verification,
+                        failed_checks=list(
+                            dict.fromkeys(
+                                [
+                                    *verification.failed_checks,
+                                    *safety_failures,
+                                ]
+                            )
+                        ),
+                        reason=(
+                            "Semantic retain decision was blocked by "
+                            "non-overridable post-adjudication safety checks: "
+                            f"{', '.join(safety_failures)}."
+                        ),
+                    )
+                )
+                post_safety_gate.append(
+                    {
+                        "claim": verification.claim.claim,
+                        "failures": safety_failures,
+                    }
+                )
                 continue
             row = evidence_by_id.get(verification.best_evidence_id, {})
             qa_id = str(row.get("qa_id") or "")
@@ -635,6 +697,14 @@ class SemanticClaimAdjudicator:
                 )
             )
         audit["adjudicated_claims"] = len(decisions)
-        audit["retained_claims"] = sum(item.should_retain for item in decisions)
+        audit["model_retained_claims"] = sum(
+            item.should_retain for item in decisions
+        )
+        audit["post_safety_gate_blocked_claims"] = len(post_safety_gate)
+        audit["post_safety_gate"] = post_safety_gate
+        audit["retained_claims"] = (
+            audit["model_retained_claims"]
+            - audit["post_safety_gate_blocked_claims"]
+        )
         audit["decisions"] = [asdict(item) for item in decisions]
         return updated, audit

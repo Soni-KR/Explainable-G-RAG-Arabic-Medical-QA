@@ -5,7 +5,7 @@ import hashlib
 import json
 import sys
 import urllib.request
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from time import monotonic, perf_counter, sleep
 from typing import Any
@@ -54,6 +54,9 @@ from src.step09_hybrid_retrieval import (
     select_relevance_phrases,
     semantic_qa_fallback_eligible,
 )
+from src.step09e_conditional_cross_encoder_rescue import (
+    ConditionalCrossEncoderRescue,
+)
 from src.step10_rerank_subgraph import rerank_subgraph
 from src.step11_build_evidence_context import build_evidence_context
 from src.step12_generate_grounded_answer import (
@@ -62,12 +65,18 @@ from src.step12_generate_grounded_answer import (
     parse_json_object,
 )
 from src.step13_extract_claims import extract_claims
+from src.step14_semantic_adjudication import SemanticClaimAdjudicator
 from src.step14_verify_claims import verify_claims
+from src.step14_verify_claims_v5 import (
+    VERIFIER_V5_PROFILE,
+    verify_claims_v5,
+)
 from src.step15_mitigate_hallucinations import mitigate_hallucinations
 from src.step16_score_reliability import score_reliability
 
 
 MODES = ("llm_only", "rag_before_mitigation", "full_pipeline")
+CLAIM_VERIFIER_PROFILES = ("deterministic_v3", VERIFIER_V5_PROFILE)
 GENERATION_CACHE_ROOT = GENERATION_OUTPUT_ROOT.parent / "cache"
 
 LLM_ONLY_SCHEMA = {
@@ -145,6 +154,94 @@ def generated_from_dict(payload: dict[str, Any]) -> GeneratedAnswer:
     return GeneratedAnswer(**values)
 
 
+def run_claim_verification(
+    claims: list[AnswerClaim],
+    context: EvidenceContextBundle,
+    config: AppConfig,
+    semantic_adjudicator: SemanticClaimAdjudicator | None = None,
+) -> tuple[list[Any], dict[str, Any]]:
+    """Select the frozen verifier or the explicit v5 development profile."""
+    profile = config.claim_adjudication.verifier_profile
+    if profile == "deterministic_v3":
+        return verify_claims(claims, context), {
+            "profile": profile,
+            "semantic_adjudication": {"enabled": False},
+        }
+    if profile != VERIFIER_V5_PROFILE:
+        raise ValueError(f"Unsupported claim verifier profile: {profile}")
+    if config.claim_adjudication.enabled and semantic_adjudicator is None:
+        raise RuntimeError(
+            "Semantic claim adjudication is enabled but no stateful "
+            "adjudicator was provided."
+        )
+    return verify_claims_v5(
+        claims,
+        context,
+        semantic_adjudicator=semantic_adjudicator,
+    )
+
+
+def claim_verifier_manifest(
+    config: AppConfig,
+    semantic_adjudicator: SemanticClaimAdjudicator | None,
+) -> dict[str, Any]:
+    return {
+        "profile": config.claim_adjudication.verifier_profile,
+        "semantic_adjudication_enabled": (
+            config.claim_adjudication.enabled
+        ),
+        "semantic_model": (
+            config.claim_adjudication.model
+            if config.claim_adjudication.enabled
+            else ""
+        ),
+        "semantic_prompt_version": (
+            config.claim_adjudication.prompt_version
+            if config.claim_adjudication.enabled
+            else ""
+        ),
+        "semantic_api_calls": (
+            semantic_adjudicator.api_calls
+            if semantic_adjudicator is not None
+            else 0
+        ),
+        "semantic_cache_hits": (
+            semantic_adjudicator.cache_hits
+            if semantic_adjudicator is not None
+            else 0
+        ),
+    }
+
+
+def cross_encoder_rescue_manifest(
+    config: AppConfig,
+    runtime: ConditionalCrossEncoderRescue | None,
+) -> dict[str, Any]:
+    return {
+        "enabled": config.qa_corpus.cross_encoder_rescue_enabled,
+        "model": (
+            config.qa_corpus.cross_encoder_model
+            if config.qa_corpus.cross_encoder_rescue_enabled
+            else ""
+        ),
+        "candidate_k": config.qa_corpus.cross_encoder_candidate_k,
+        "weight": config.qa_corpus.cross_encoder_weight,
+        "minimum_score": config.qa_corpus.cross_encoder_min_score,
+        "runtime_checks": runtime.calls if runtime is not None else 0,
+        "triggered_queries": (
+            runtime.triggered if runtime is not None else 0
+        ),
+        "total_latency_ms": (
+            round(runtime.total_latency_ms, 3)
+            if runtime is not None
+            else 0.0
+        ),
+        "semantic_e5_fallback_disabled_for_ablation": bool(
+            config.qa_corpus.cross_encoder_rescue_enabled
+        ),
+    }
+
+
 def analysis_succeeded(payload: dict[str, Any]) -> bool:
     warnings = [str(item) for item in payload.get("warnings", [])]
     return not any("Unified LLM query analysis failed" in item for item in warnings)
@@ -171,7 +268,14 @@ def evaluation_pipeline_fingerprint(
     runtime_files = (
         root / "src" / "step10_rerank_subgraph.py",
         root / "src" / "step11_build_evidence_context.py",
+        root / "src" / "step09e_conditional_cross_encoder_rescue.py",
         root / "src" / "step12_generate_grounded_answer.py",
+        root / "src" / "step13_extract_claims.py",
+        root / "src" / "step14_verify_claims.py",
+        root / "src" / "step14_verify_claims_v5.py",
+        root / "src" / "step14_semantic_adjudication.py",
+        root / "src" / "step15_mitigate_hallucinations.py",
+        root / "src" / "step16_score_reliability.py",
     )
     payload = {
         "retrieval_file_sha256": hashlib.sha256(retrieval_file.read_bytes()).hexdigest(),
@@ -183,10 +287,23 @@ def evaluation_pipeline_fingerprint(
         "graph_version": config.graph_version,
         "embedding_model": config.embeddings.model_name,
         "retrieval": asdict(config.retrieval),
+        "qa_corpus": asdict(config.qa_corpus),
         "answer_model": config.answer_generation.model,
         "answer_prompt_version": config.answer_generation.prompt_version,
         "answer_temperature": config.answer_generation.temperature,
         "answer_reasoning_effort": config.answer_generation.reasoning_effort,
+        "claim_verifier_profile": (
+            config.claim_adjudication.verifier_profile
+        ),
+        "semantic_claim_adjudication": {
+            "enabled": config.claim_adjudication.enabled,
+            "model": config.claim_adjudication.model,
+            "prompt_version": config.claim_adjudication.prompt_version,
+            "temperature": config.claim_adjudication.temperature,
+            "reasoning_effort": (
+                config.claim_adjudication.reasoning_effort
+            ),
+        },
     }
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
@@ -327,9 +444,11 @@ def generate_llm_only(query: str, config: AppConfig) -> GeneratedAnswer:
 
 def timed_rag_artifacts(
     query: str,
-    repository: Neo4jRepository,
+    repository: Neo4jRepository | None,
     config: AppConfig,
     model: Any,
+    semantic_adjudicator: SemanticClaimAdjudicator | None = None,
+    cross_encoder_rescue: ConditionalCrossEncoderRescue | None = None,
 ) -> dict[str, Any]:
     timings: dict[str, float] = {}
     pipeline_started = perf_counter()
@@ -355,6 +474,39 @@ def timed_rag_artifacts(
     started = perf_counter()
     context = build_evidence_context(subgraph, analysis.reformulated_query, config=config)
     timings["step11_context_construction"] = round((perf_counter() - started) * 1000.0, 3)
+
+    cross_encoder_audit: dict[str, Any] = {
+        "enabled": False,
+        "eligible": False,
+        "status": "not_run",
+    }
+    if cross_encoder_rescue is not None:
+        started = perf_counter()
+        retrieval, cross_encoder_audit = cross_encoder_rescue.apply(
+            retrieval,
+            context,
+        )
+        timings["step09_cross_encoder_rescue"] = round(
+            (perf_counter() - started) * 1000.0,
+            3,
+        )
+        if cross_encoder_audit.get("status") == "ok":
+            started = perf_counter()
+            subgraph = rerank_subgraph(retrieval, config=config)
+            timings["step10_cross_encoder_reranking"] = round(
+                (perf_counter() - started) * 1000.0,
+                3,
+            )
+            started = perf_counter()
+            context = build_evidence_context(
+                subgraph,
+                analysis.reformulated_query,
+                config=config,
+            )
+            timings["step11_cross_encoder_context_construction"] = round(
+                (perf_counter() - started) * 1000.0,
+                3,
+            )
 
     if semantic_qa_fallback_eligible(
         retrieval,
@@ -394,7 +546,12 @@ def timed_rag_artifacts(
     timings["step13_claim_extraction"] = round((perf_counter() - started) * 1000.0, 3)
 
     started = perf_counter()
-    verifications = verify_claims(claims, context)
+    verifications, verifier_audit = run_claim_verification(
+        claims,
+        context,
+        config,
+        semantic_adjudicator,
+    )
     timings["step14_claim_verification"] = round((perf_counter() - started) * 1000.0, 3)
 
     started = perf_counter()
@@ -415,6 +572,8 @@ def timed_rag_artifacts(
         "generated": generated,
         "claims": claims,
         "verifications": verifications,
+        "claim_verifier_audit": verifier_audit,
+        "cross_encoder_rescue_audit": cross_encoder_audit,
         "mitigated": mitigated,
         "reliability": reliability,
         "timings": timings,
@@ -590,6 +749,7 @@ def run_offline_reaudit(
     *,
     gold_queries: list[Any],
     source_directory: Path,
+    config: AppConfig,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """Rerun Steps 13-16 from saved generation/context data without API calls."""
     records_path = source_directory / "full_pipeline.jsonl"
@@ -620,7 +780,11 @@ def run_offline_reaudit(
         claims = extract_claims(generated)
         claim_ms = round((perf_counter() - started) * 1000.0, 3)
         started = perf_counter()
-        verifications = verify_claims(claims, context)
+        verifications, verifier_audit = run_claim_verification(
+            claims,
+            context,
+            config,
+        )
         verification_ms = round((perf_counter() - started) * 1000.0, 3)
         started = perf_counter()
         mitigated = mitigate_hallucinations(generated, verifications, context=context)
@@ -648,6 +812,7 @@ def run_offline_reaudit(
             **raw,
             "claims": [asdict(item) for item in claims],
             "verifications": [asdict(item) for item in verifications],
+            "claim_verifier_audit": verifier_audit,
             "mitigated": asdict(mitigated),
             "reliability": asdict(reliability),
             "reaudit_source": str(records_path),
@@ -698,8 +863,10 @@ def run_resumable_frozen_generation(
     resume: bool,
     rerank_frozen_retrieval: bool,
     allow_live_step08: bool,
+    frozen_context_file: Path | None = None,
+    semantic_adjudicator: SemanticClaimAdjudicator | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
-    """Generate from frozen Step 10 outputs with append-only API/checkpoint caches."""
+    """Generate from frozen retrieval or exact frozen Step 11 contexts."""
     frozen_rows = {str(row["query_id"]): row for row in read_jsonl(retrieval_file)}
     expected_ids = {gold.query_id for gold in gold_queries}
     missing = sorted(expected_ids - set(frozen_rows))
@@ -724,8 +891,9 @@ def run_resumable_frozen_generation(
 
     analysis_cache: dict[str, dict[str, Any]] = {}
     for query_id, row in frozen_rows.items():
-        analysis_payload = dict(row.get("query_analysis") or {})
-        linking_payload = dict(row.get("entity_linking") or {})
+        raw = dict(row.get("raw") or {}) if frozen_context_file else row
+        analysis_payload = dict(raw.get("query_analysis") or {})
+        linking_payload = dict(raw.get("entity_linking") or {})
         # Frozen retrieval means frozen Step 8. Preserve the exact saved payload,
         # including warnings/fallback classifications, so modes remain comparable.
         if analysis_payload and linking_payload:
@@ -733,7 +901,7 @@ def run_resumable_frozen_generation(
                 "query_id": query_id,
                 "analysis": analysis_payload,
                 "linking": linking_payload,
-                "source": str(retrieval_file),
+                "source": str(frozen_context_file or retrieval_file),
             }
     if allow_live_step08:
         for source_file in step08_source_files:
@@ -805,6 +973,8 @@ def run_resumable_frozen_generation(
                 raise RuntimeError(
                     f"Frozen Step 8 payload is unavailable for {gold.query_id}; no live call was made."
                 )
+            if repository is None:
+                raise RuntimeError("Live Step 8 requires a Neo4j repository.")
             last_warning = ""
             for attempt in range(1, max_rate_limit_retries + 1):
                 pacer.wait()
@@ -843,17 +1013,36 @@ def run_resumable_frozen_generation(
                     f"Cache preserved at {cache_directory}."
                 )
 
-        started = perf_counter()
-        subgraph = frozen_subgraph(
-            frozen,
-            analysis.primary_intent,
-            rerank=rerank_frozen_retrieval,
-            config=config,
-        )
-        reranking_ms = round((perf_counter() - started) * 1000.0, 3)
-        started = perf_counter()
-        context = build_evidence_context(subgraph, analysis.reformulated_query, config=config)
-        context_ms = round((perf_counter() - started) * 1000.0, 3)
+        if frozen_context_file:
+            raw = dict(frozen.get("raw") or {})
+            context_payload = raw.get("context")
+            if not isinstance(context_payload, dict):
+                raise ValueError(
+                    f"Frozen context source lacks Step 11 context for {gold.query_id}."
+                )
+            context = EvidenceContextBundle(**context_payload)
+            reranking_ms = 0.0
+            context_ms = 0.0
+            subgraph_warnings: list[str] = []
+            retrieval_plan_payload = dict(raw.get("retrieval_plan") or {})
+        else:
+            started = perf_counter()
+            subgraph = frozen_subgraph(
+                frozen,
+                analysis.primary_intent,
+                rerank=rerank_frozen_retrieval,
+                config=config,
+            )
+            reranking_ms = round((perf_counter() - started) * 1000.0, 3)
+            started = perf_counter()
+            context = build_evidence_context(
+                subgraph,
+                analysis.reformulated_query,
+                config=config,
+            )
+            context_ms = round((perf_counter() - started) * 1000.0, 3)
+            subgraph_warnings = list(subgraph.warnings)
+            retrieval_plan_payload = dict(frozen.get("retrieval_plan") or {})
         fingerprint = context_fingerprint(context, config)
         cached_generation = generation_cache.get((gold.query_id, fingerprint))
         generation_ms = 0.0
@@ -908,7 +1097,12 @@ def run_resumable_frozen_generation(
         claims = extract_claims(generated)
         claim_ms = round((perf_counter() - started) * 1000.0, 3)
         started = perf_counter()
-        verifications = verify_claims(claims, context)
+        verifications, verifier_audit = run_claim_verification(
+            claims,
+            context,
+            config,
+            semantic_adjudicator,
+        )
         verification_ms = round((perf_counter() - started) * 1000.0, 3)
         started = perf_counter()
         mitigated = mitigate_hallucinations(generated, verifications, context=context)
@@ -940,18 +1134,22 @@ def run_resumable_frozen_generation(
             raw={
                 "query_analysis": asdict(analysis),
                 "entity_linking": asdict(linking),
-                "retrieval_plan": dict(frozen.get("retrieval_plan") or {}),
+                "retrieval_plan": retrieval_plan_payload,
                 "context": asdict(context),
                 "generated": asdict(generated),
                 "claims": [asdict(item) for item in claims],
                 "verifications": [asdict(item) for item in verifications],
+                "claim_verifier_audit": verifier_audit,
                 "mitigated": asdict(mitigated),
                 "reliability": asdict(reliability),
                 "frozen_retrieval_source": str(retrieval_file),
+                "frozen_context_source": (
+                    str(frozen_context_file) if frozen_context_file else ""
+                ),
                 "context_fingerprint": fingerprint,
                 "pipeline_fingerprint": pipeline_fingerprint,
             },
-            warnings=[*analysis.warnings, *subgraph.warnings, *generated.warnings],
+            warnings=[*analysis.warnings, *subgraph_warnings, *generated.warnings],
             generation_status=generated.generation_status,
             answerability=mitigated.answerability,
         )
@@ -990,6 +1188,14 @@ def main() -> int:
         help="Reuse a completed full_hybrid.jsonl; Steps 9-10 are not rerun.",
     )
     parser.add_argument(
+        "--reuse-context-run",
+        type=Path,
+        help=(
+            "Reuse full_pipeline.jsonl from a completed generation run and rerun "
+            "only Steps 12-17 from its exact frozen Step 11 contexts."
+        ),
+    )
+    parser.add_argument(
         "--reaudit-generation-run",
         type=Path,
         help="Reuse a completed generation directory and rerun only Steps 13-16 offline.",
@@ -1015,16 +1221,111 @@ def main() -> int:
     parser.add_argument("--request-interval-seconds", type=float, default=8.0)
     parser.add_argument("--max-rate-limit-retries", type=int, default=6)
     parser.add_argument("--rate-limit-backoff-seconds", type=float, default=30.0)
+    parser.add_argument(
+        "--answer-prompt-version",
+        choices=(
+            "grounded_claim_first_v3_1",
+            "grounded_evidence_adaptive_v4_2",
+        ),
+        default="",
+        help=(
+            "Explicitly select the isolated Step 12 profile for a new run. "
+            "Saved runs and caches remain bound to this value by fingerprint."
+        ),
+    )
+    parser.add_argument(
+        "--claim-verifier-profile",
+        choices=CLAIM_VERIFIER_PROFILES,
+        default="",
+        help=(
+            "Select deterministic_v3 or the opt-in hard_soft_v5 development "
+            "profile. The frozen production default is deterministic_v3."
+        ),
+    )
+    parser.add_argument(
+        "--enable-claim-adjudication",
+        action="store_true",
+        help=(
+            "Permit semantic review of v5 soft-gate disputes. This flag is "
+            "required even when the environment setting is true."
+        ),
+    )
+    parser.add_argument(
+        "--enable-cross-encoder-rescue",
+        action="store_true",
+        help=(
+            "Enable the local conditional reranker only for empty or weak "
+            "Step 11 contexts. The semantic E5 fallback is disabled in this "
+            "isolated ablation."
+        ),
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     modes = args.mode or list(MODES)
     gold_path = args.gold_file.resolve()
     gold_queries = load_gold_queries(gold_path, args.limit)
     config = load_final_config()
+    if args.answer_prompt_version:
+        config = replace(
+            config,
+            answer_generation=replace(
+                config.answer_generation,
+                prompt_version=args.answer_prompt_version,
+            ),
+        )
+    verifier_profile = (
+        args.claim_verifier_profile
+        or config.claim_adjudication.verifier_profile
+    )
+    if (
+        args.enable_claim_adjudication
+        and verifier_profile != VERIFIER_V5_PROFILE
+    ):
+        raise ValueError(
+            "Semantic claim adjudication is available only with "
+            "--claim-verifier-profile hard_soft_v5."
+        )
+    config = replace(
+        config,
+        claim_adjudication=replace(
+            config.claim_adjudication,
+            verifier_profile=verifier_profile,
+            # Semantic retention always requires the explicit CLI flag.
+            enabled=args.enable_claim_adjudication,
+        ),
+        qa_corpus=replace(
+            config.qa_corpus,
+            # Rescue always requires an explicit evaluation flag.
+            cross_encoder_rescue_enabled=(
+                args.enable_cross_encoder_rescue
+            ),
+            semantic_fallback_enabled=(
+                False
+                if args.enable_cross_encoder_rescue
+                else config.qa_corpus.semantic_fallback_enabled
+            ),
+        ),
+    )
     if config.graph_version != "final_v1":
         raise RuntimeError("Generation evaluation is restricted to frozen final_v1.")
     if args.dry_run:
-        print(json.dumps({"status": "dry_run", "queries": len(gold_queries), "modes": modes}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "status": "dry_run",
+                    "queries": len(gold_queries),
+                    "modes": modes,
+                    "claim_verifier_profile": verifier_profile,
+                    "semantic_claim_adjudication": (
+                        config.claim_adjudication.enabled
+                    ),
+                    "cross_encoder_rescue": (
+                        config.qa_corpus.cross_encoder_rescue_enabled
+                    ),
+                },
+                indent=2,
+            )
+        )
         return 0
     if not gold_queries:
         raise RuntimeError("The gold template has no independently annotated query rows.")
@@ -1032,15 +1333,45 @@ def main() -> int:
     run_id = args.run_id or make_run_id("generation")
     ensure_run_available(GENERATION_OUTPUT_ROOT, run_id)
     ensure_run_available(CLAIM_AUDIT_OUTPUT_ROOT, run_id)
+    semantic_adjudicator: SemanticClaimAdjudicator | None = None
+    if config.claim_adjudication.enabled:
+        semantic_adjudicator = SemanticClaimAdjudicator(
+            config,
+            cache_path=(
+                GENERATION_CACHE_ROOT
+                / run_id
+                / "step14_semantic_adjudication.jsonl"
+            ),
+            raise_on_error=True,
+        )
+    cross_encoder_rescue: ConditionalCrossEncoderRescue | None = None
+    if config.qa_corpus.cross_encoder_rescue_enabled:
+        cross_encoder_rescue = ConditionalCrossEncoderRescue(
+            config,
+            raise_on_unavailable=True,
+        )
     if args.reaudit_generation_run:
-        if args.reuse_retrieval_run:
-            raise ValueError("Choose either --reaudit-generation-run or --reuse-retrieval-run.")
+        if args.reuse_retrieval_run or args.reuse_context_run:
+            raise ValueError(
+                "Choose only one of --reaudit-generation-run, "
+                "--reuse-retrieval-run, or --reuse-context-run."
+            )
         if modes != ["full_pipeline"]:
             raise ValueError("Offline re-audit supports only --mode full_pipeline.")
+        if config.claim_adjudication.enabled:
+            raise ValueError(
+                "Offline re-audit cannot make semantic adjudication API calls."
+            )
+        if config.qa_corpus.cross_encoder_rescue_enabled:
+            raise ValueError(
+                "Cross-encoder rescue requires a live Step 9-11 pass and is "
+                "not available during an offline Step 13-16 re-audit."
+            )
         source_directory = args.reaudit_generation_run.resolve()
         records, audits, source_manifest = run_offline_reaudit(
             gold_queries=gold_queries,
             source_directory=source_directory,
+            config=config,
         )
         graph_counts = dict(source_manifest.get("graph", {}).get("counts") or {})
         aggregate = {"full_pipeline": aggregate_mode(records)}
@@ -1078,6 +1409,16 @@ def main() -> int:
             "retrieval_rerun": False,
             "generation_rerun": False,
         }
+        manifest["claim_verifier"] = claim_verifier_manifest(
+            config,
+            semantic_adjudicator,
+        )
+        manifest["cross_encoder_rescue"] = (
+            cross_encoder_rescue_manifest(
+                config,
+                cross_encoder_rescue,
+            )
+        )
         run_directory = create_run_directory(GENERATION_OUTPUT_ROOT, run_id)
         audit_directory = create_run_directory(CLAIM_AUDIT_OUTPUT_ROOT, run_id)
         write_jsonl(run_directory / "full_pipeline.jsonl", records)
@@ -1101,34 +1442,100 @@ def main() -> int:
             )
         )
         return 0
-    if args.reuse_retrieval_run:
+    if args.reuse_retrieval_run or args.reuse_context_run:
         if modes != ["full_pipeline"]:
-            raise ValueError("Frozen retrieval reuse currently supports only --mode full_pipeline.")
+            raise ValueError("Frozen source reuse supports only --mode full_pipeline.")
         if args.max_rate_limit_retries <= 0:
             raise ValueError("max-rate-limit-retries must be positive.")
-        retrieval_file = args.reuse_retrieval_run.resolve()
-        if not retrieval_file.exists():
-            raise FileNotFoundError(f"Frozen retrieval JSONL not found: {retrieval_file}")
-        with Neo4jRepository(config=config) as repository:
-            graph_counts = repository.get_graph_counts()
+        if args.reuse_retrieval_run and args.reuse_context_run:
+            raise ValueError(
+                "Choose either --reuse-retrieval-run or --reuse-context-run."
+            )
+        if config.qa_corpus.cross_encoder_rescue_enabled:
+            raise ValueError(
+                "Cross-encoder rescue must be evaluated while building the "
+                "retrieval run, not injected into a frozen retrieval/context "
+                "artifact."
+            )
+
+        frozen_context_file: Path | None = None
+        source_manifest: dict[str, Any] = {}
+        if args.reuse_context_run:
+            if args.rerank_frozen_retrieval:
+                raise ValueError(
+                    "--rerank-frozen-retrieval is incompatible with exact Step 11 "
+                    "context replay."
+                )
+            if args.allow_live_step08 or args.step08_source_run:
+                raise ValueError(
+                    "Exact Step 11 context replay cannot make or substitute Step 8 calls."
+                )
+            context_source = args.reuse_context_run.resolve()
+            frozen_context_file = (
+                context_source / "full_pipeline.jsonl"
+                if context_source.is_dir()
+                else context_source
+            )
+            if not frozen_context_file.exists():
+                raise FileNotFoundError(
+                    f"Frozen context JSONL not found: {frozen_context_file}"
+                )
+            source_manifest_path = frozen_context_file.parent / "manifest.json"
+            if source_manifest_path.exists():
+                source_manifest = json.loads(
+                    source_manifest_path.read_text(encoding="utf-8-sig")
+                )
+            graph_counts = dict(source_manifest.get("graph", {}).get("counts") or {})
+            retrieval_file = frozen_context_file
             records, audits, cache_stats = run_resumable_frozen_generation(
                 gold_queries=gold_queries,
                 retrieval_file=retrieval_file,
-                step08_source_files=[path.resolve() for path in args.step08_source_run],
+                step08_source_files=[],
                 run_id=run_id,
-                repository=repository,
+                repository=None,
                 config=config,
                 request_interval_seconds=args.request_interval_seconds,
                 max_rate_limit_retries=args.max_rate_limit_retries,
                 retry_base_seconds=args.rate_limit_backoff_seconds,
                 resume=args.resume,
-                rerank_frozen_retrieval=args.rerank_frozen_retrieval,
-                allow_live_step08=args.allow_live_step08,
+                rerank_frozen_retrieval=False,
+                allow_live_step08=False,
+                frozen_context_file=frozen_context_file,
+                semantic_adjudicator=semantic_adjudicator,
             )
+        else:
+            retrieval_file = args.reuse_retrieval_run.resolve()
+            if not retrieval_file.exists():
+                raise FileNotFoundError(
+                    f"Frozen retrieval JSONL not found: {retrieval_file}"
+                )
+            with Neo4jRepository(config=config) as repository:
+                graph_counts = repository.get_graph_counts()
+                records, audits, cache_stats = run_resumable_frozen_generation(
+                    gold_queries=gold_queries,
+                    retrieval_file=retrieval_file,
+                    step08_source_files=[
+                        path.resolve() for path in args.step08_source_run
+                    ],
+                    run_id=run_id,
+                    repository=repository,
+                    config=config,
+                    request_interval_seconds=args.request_interval_seconds,
+                    max_rate_limit_retries=args.max_rate_limit_retries,
+                    retry_base_seconds=args.rate_limit_backoff_seconds,
+                    resume=args.resume,
+                    rerank_frozen_retrieval=args.rerank_frozen_retrieval,
+                    allow_live_step08=args.allow_live_step08,
+                    semantic_adjudicator=semantic_adjudicator,
+                )
         aggregate = {"full_pipeline": aggregate_mode(records)}
         manifest = build_manifest(
             run_id=run_id,
-            run_type="generation_ablation_frozen_retrieval_resume",
+            run_type=(
+                "generation_ablation_frozen_context_steps12_17"
+                if frozen_context_file
+                else "generation_ablation_frozen_retrieval_resume"
+            ),
             modes=modes,
             gold_path=gold_path,
             gold_count=len(gold_queries),
@@ -1151,6 +1558,29 @@ def main() -> int:
             "successful_api_calls_only": True,
             **cache_stats,
         }
+        manifest["claim_verifier"] = claim_verifier_manifest(
+            config,
+            semantic_adjudicator,
+        )
+        manifest["cross_encoder_rescue"] = (
+            cross_encoder_rescue_manifest(
+                config,
+                cross_encoder_rescue,
+            )
+        )
+        if frozen_context_file:
+            manifest["frozen_context_replay"] = {
+                "source_file": str(frozen_context_file),
+                "source_sha256": hashlib.sha256(
+                    frozen_context_file.read_bytes()
+                ).hexdigest(),
+                "source_run_id": source_manifest.get(
+                    "run_id", frozen_context_file.parent.name
+                ),
+                "steps_rerun": [12, 13, 14, 15, 16, 17],
+                "steps_not_rerun": [8, 9, 10, 11],
+                "exact_step11_context_reused": True,
+            }
         run_directory = create_run_directory(GENERATION_OUTPUT_ROOT, run_id)
         audit_directory = create_run_directory(CLAIM_AUDIT_OUTPUT_ROOT, run_id)
         write_jsonl(run_directory / "full_pipeline.jsonl", records)
@@ -1186,7 +1616,14 @@ def main() -> int:
         graph_counts = repository.get_graph_counts()
         for gold in gold_queries:
             artifacts = (
-                timed_rag_artifacts(gold.query, repository, config, model)
+                timed_rag_artifacts(
+                    gold.query,
+                    repository,
+                    config,
+                    model,
+                    semantic_adjudicator,
+                    cross_encoder_rescue,
+                )
                 if needs_rag
                 else None
             )
@@ -1197,7 +1634,12 @@ def main() -> int:
                     elapsed = round((perf_counter() - started) * 1000.0, 3)
                     context = EvidenceContextBundle(query=gold.query, reformulated_query=gold.query)
                     claims = extract_claims(generated)
-                    verifications = verify_claims(claims, context)
+                    verifications, verifier_audit = run_claim_verification(
+                        claims,
+                        context,
+                        config,
+                        semantic_adjudicator,
+                    )
                     record, audit = build_record(
                         gold=gold,
                         mode=mode,
@@ -1206,7 +1648,10 @@ def main() -> int:
                         verifications=verifications,
                         context=context,
                         timings={"step12_llm_only_generation": elapsed, "end_to_end": elapsed},
-                        raw={"generated": asdict(generated)},
+                        raw={
+                            "generated": asdict(generated),
+                            "claim_verifier_audit": verifier_audit,
+                        },
                         warnings=generated.warnings,
                         generation_status=generated.generation_status,
                         answerability=(
@@ -1262,6 +1707,12 @@ def main() -> int:
                             "generated": asdict(generated),
                             "claims": [asdict(item) for item in artifacts["claims"]],
                             "verifications": [asdict(item) for item in verifications],
+                            "claim_verifier_audit": artifacts[
+                                "claim_verifier_audit"
+                            ],
+                            "cross_encoder_rescue_audit": artifacts[
+                                "cross_encoder_rescue_audit"
+                            ],
                             "mitigated": asdict(artifacts["mitigated"]),
                             "reliability": asdict(artifacts["reliability"]),
                         },
@@ -1291,6 +1742,14 @@ def main() -> int:
         config=config,
         graph_counts=graph_counts,
         arguments={key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()},
+    )
+    manifest["claim_verifier"] = claim_verifier_manifest(
+        config,
+        semantic_adjudicator,
+    )
+    manifest["cross_encoder_rescue"] = cross_encoder_rescue_manifest(
+        config,
+        cross_encoder_rescue,
     )
     run_directory = create_run_directory(GENERATION_OUTPUT_ROOT, run_id)
     audit_directory = create_run_directory(CLAIM_AUDIT_OUTPUT_ROOT, run_id)

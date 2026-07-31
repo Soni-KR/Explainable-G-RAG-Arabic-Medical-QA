@@ -1,0 +1,49 @@
+{
+  "full_pipeline": {
+    "bertscore": {
+      "status": "computed",
+      "evaluated_query_count": 29,
+      "bertscore_f1": 0.675517
+    },
+    "claim_grounding": {
+      "status": "computed",
+      "evaluated_query_count": 29,
+      "claim_support_rate": 1.0,
+      "hallucination_rate": 0.0
+    },
+    "citation_validity": {
+      "status": "computed",
+      "evaluated_query_count": 29,
+      "citation_validity": 1.0,
+      "claims_with_valid_citation_rate": 1.0
+    },
+    "answer_completeness": {
+      "status": "computed",
+      "answerability_counts": {
+        "partially_answerable": 8,
+        "fully_answerable": 3,
+        "insufficient_evidence": 70,
+        "supported_but_incomplete": 18,
+        "generation_unavailable": 1
+      },
+      "average_query_coverage": 0.409088
+    },
+    "efficiency": {
+      "status": "computed",
+      "run_count": 100,
+      "average_latency_ms": {
+        "end_to_end": 7761.94567,
+        "step08_query_understanding": 0.0,
+        "step08_retrieval_planning": 0.0,
+        "step09_hybrid_retrieval": 0.0,
+        "step10_subgraph_reranking": 0.0,
+        "step11_context_construction": 0.0,
+        "step12_answer_generation": 567.51435,
+        "step13_claim_extraction": 0.02913,
+        "step14_claim_verification": 22.4451,
+        "step15_hallucination_mitigation": 3.68619,
+        "step16_reliability_scoring": 0.04486
+      }
+    }
+  }
+}

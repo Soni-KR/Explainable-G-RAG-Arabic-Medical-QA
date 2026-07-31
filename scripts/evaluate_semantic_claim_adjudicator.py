@@ -22,6 +22,7 @@ from src.step14_semantic_adjudication import (
     SemanticClaimAdjudicator,
     build_adjudication_cases,
 )
+from src.step14_verify_claims_v5 import apply_v5_hard_gates
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -189,6 +190,27 @@ def main() -> int:
     parser.add_argument("--request-interval-seconds", type=float, default=None)
     parser.add_argument("--model", default="")
     parser.add_argument("--reasoning-effort", default="")
+    parser.add_argument(
+        "--prompt-version",
+        default="",
+        help=(
+            "Override the semantic-adjudication prompt version so prompt-only "
+            "ablations receive an independent cache fingerprint."
+        ),
+    )
+    parser.add_argument(
+        "--apply-v5-hard-gates",
+        action="store_true",
+        help=(
+            "Apply verifier-v5 non-overridable gates before semantic "
+            "adjudication. This affects only this evaluation run."
+        ),
+    )
+    parser.add_argument(
+        "--cache-only",
+        action="store_true",
+        help="Fail on a cache miss instead of making a semantic API call.",
+    )
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -227,6 +249,7 @@ def main() -> int:
                     "human_remove": selected_negative,
                     "source_run": str(source_path),
                     "human_labels_sent_to_model": False,
+                    "v5_hard_gates": args.apply_v5_hard_gates,
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -252,6 +275,10 @@ def main() -> int:
             args.reasoning_effort
             or config.claim_adjudication.reasoning_effort
         ),
+        prompt_version=(
+            args.prompt_version
+            or config.claim_adjudication.prompt_version
+        ),
         request_interval_seconds=(
             args.request_interval_seconds
             if args.request_interval_seconds is not None
@@ -263,6 +290,7 @@ def main() -> int:
         config,
         cache_path=cache_path,
         raise_on_error=True,
+        allow_api_calls=not args.cache_only,
     )
 
     review_by_query: dict[str, list[dict[str, str]]] = {}
@@ -288,6 +316,33 @@ def main() -> int:
             for item in raw_verifications
             if item.claim.claim in wanted_claims
         ]
+        deterministic_by_claim = {
+            item.claim.claim: item for item in selected_verifications
+        }
+        gate_rows: list[dict[str, Any]] = []
+        if args.apply_v5_hard_gates:
+            adjudication_input, gate_rows = apply_v5_hard_gates(
+                selected_verifications,
+                context,
+            )
+        else:
+            adjudication_input = selected_verifications
+            gate_rows = [
+                {
+                    "claim": item.claim.claim,
+                    "status_after_hard_gates": item.status,
+                    "hard_failures": [],
+                    "soft_failures": [],
+                    "semantic_eligible": True,
+                }
+                for item in selected_verifications
+            ]
+        hardened_by_claim = {
+            item.claim.claim: item for item in adjudication_input
+        }
+        gate_by_claim = {
+            str(item.get("claim") or ""): item for item in gate_rows
+        }
         found_claims = {item.claim.claim for item in selected_verifications}
         missing_claims = wanted_claims - found_claims
         if missing_claims:
@@ -295,7 +350,7 @@ def main() -> int:
                 f"Could not match {len(missing_claims)} reviewed claims for {query_id}."
             )
         cases, verification_by_claim_id = build_adjudication_cases(
-            selected_verifications,
+            adjudication_input,
             context,
         )
         claim_by_id = {
@@ -306,7 +361,10 @@ def main() -> int:
             claim: claim_id for claim_id, claim in claim_by_id.items()
         }
         try:
-            _, audit = adjudicator.adjudicate(selected_verifications, context)
+            final_verifications, audit = adjudicator.adjudicate(
+                adjudication_input,
+                context,
+            )
         except ClaimAdjudicationRateLimit as exc:
             stopped_error = str(exc)
             print(
@@ -347,6 +405,9 @@ def main() -> int:
         human_by_claim = {
             row["removed_claim"]: row for row in review_by_query[query_id]
         }
+        final_by_claim = {
+            item.claim.claim: item for item in final_verifications
+        }
         for verification_index, verification in enumerate(
             selected_verifications,
             start=1,
@@ -356,6 +417,10 @@ def main() -> int:
             decision = decisions.get(claim_id)
             human = human_by_claim[claim]
             semantic_decision = decision is not None
+            deterministic = deterministic_by_claim[claim]
+            hardened = hardened_by_claim[claim]
+            final = final_by_claim[claim]
+            gate = gate_by_claim.get(claim, {})
             if not semantic_decision:
                 deterministic_guard_claims += 1
             predictions.append(
@@ -363,6 +428,23 @@ def main() -> int:
                     "query_id": query_id,
                     "claim_id": claim_id,
                     "claim": claim,
+                    "deterministic_v3_status": deterministic.status,
+                    "deterministic_v3_should_retain": (
+                        "yes" if deterministic.status == "supported" else "no"
+                    ),
+                    "v5_hard_status": hardened.status,
+                    "v5_hard_should_retain": (
+                        "yes" if hardened.status == "supported" else "no"
+                    ),
+                    "v5_hard_failures": " | ".join(
+                        str(item) for item in gate.get("hard_failures", [])
+                    ),
+                    "v5_soft_failures": " | ".join(
+                        str(item) for item in gate.get("soft_failures", [])
+                    ),
+                    "v5_semantic_eligible": bool(
+                        gate.get("semantic_eligible")
+                    ),
                     "adjudication_status": (
                         "semantic"
                         if semantic_decision
@@ -422,16 +504,12 @@ def main() -> int:
                         else "no"
                     ),
                     "predicted_should_retain": (
-                        "yes"
-                        if semantic_decision and decision["should_retain"]
-                        else "no"
+                        "yes" if final.status == "supported" else "no"
                     ),
                     "human_should_retain": human["human_should_retain"],
                     "correct_retain_decision": (
                         (
-                            bool(decision["should_retain"])
-                            if semantic_decision
-                            else False
+                            final.status == "supported"
                         )
                         == (human["human_should_retain"] == "yes")
                     ),
@@ -463,8 +541,53 @@ def main() -> int:
         )
 
     targets = [row["human_should_retain"] == "yes" for row in predictions]
+    deterministic_predictions = [
+        row["deterministic_v3_should_retain"] == "yes"
+        for row in predictions
+    ]
+    hard_predictions = [
+        row["v5_hard_should_retain"] == "yes" for row in predictions
+    ]
     predicted = [row["predicted_should_retain"] == "yes" for row in predictions]
+    deterministic_metrics = confusion_metrics(
+        targets,
+        deterministic_predictions,
+    )
+    hard_metrics = confusion_metrics(targets, hard_predictions)
     retain_metrics = confusion_metrics(targets, predicted)
+    retained_query_ids = {
+        row["query_id"]
+        for row in predictions
+        if row["predicted_should_retain"] == "yes"
+    }
+    source_substantive_ids = {
+        query_id
+        for query_id, source in source_records.items()
+        if list(source.get("output_claims") or [])
+    }
+    newly_substantive_ids = retained_query_ids - source_substantive_ids
+    existing_retained_claims = sum(
+        len(list(source.get("output_claims") or []))
+        for source in source_records.values()
+    )
+    recovered_claims = sum(predicted)
+    coverage_impact = {
+        "scope": (
+            "reviewed development replay; not an independent production score"
+        ),
+        "source_queries": len(source_records),
+        "source_substantive_queries": len(source_substantive_ids),
+        "source_retained_claims": existing_retained_claims,
+        "semantically_recovered_claims": recovered_claims,
+        "queries_with_recovered_claims": len(retained_query_ids),
+        "newly_substantive_queries": len(newly_substantive_ids),
+        "projected_substantive_queries": len(
+            source_substantive_ids | retained_query_ids
+        ),
+        "projected_retained_claims": (
+            existing_retained_claims + recovered_claims
+        ),
+    }
     pilot_gate = {
         "maximum_false_positives": 0,
         "minimum_retain_recall": 0.80,
@@ -482,6 +605,21 @@ def main() -> int:
         "selected_claims": len(selected_rows),
         "completed_claims": len(predictions),
         "retain_decision": retain_metrics,
+        "coverage_impact": coverage_impact,
+        "experiment_b": {
+            "deterministic_v3": deterministic_metrics,
+            "v5_hard_gates_only": hard_metrics,
+            "v5_hard_plus_semantic": retain_metrics,
+        },
+        "v5_gate_counts": {
+            "hard_blocked": sum(
+                bool(row["v5_hard_failures"]) for row in predictions
+            ),
+            "semantically_eligible": sum(
+                bool(row["v5_semantic_eligible"]) for row in predictions
+            ),
+            "semantic_retain": sum(predicted),
+        },
         "deterministic_provenance_guard_claims": deterministic_guard_claims,
         "pilot_safety_gate": pilot_gate,
         "dimension_exact_agreement": {
@@ -523,6 +661,8 @@ def main() -> int:
         "source_run": str(source_path),
         "source_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
         "human_labels_sent_to_model": False,
+        "cache_only": args.cache_only,
+        "v5_hard_gates": args.apply_v5_hard_gates,
         "pilot_safety_gate": pilot_gate,
         "selection": {
             "mode": args.mode,

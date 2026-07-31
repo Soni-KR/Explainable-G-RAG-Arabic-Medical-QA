@@ -1,0 +1,69 @@
+{
+  "run_id": "oracle_answerability_pilot5_20260730",
+  "audit_version": "oracle_answerability_v1",
+  "created_at_utc": "2026-07-30T13:03:23.024800+00:00",
+  "cohorts": [
+    "ahd_reference",
+    "entity_gt"
+  ],
+  "source_files": {
+    "ahd_reference": {
+      "path": "outputs\\evaluation\\retrieval\\frozen_prod_ahd_reference_100_conditional_fts_20260728\\vector_graph_conditional_fts.jsonl",
+      "sha256": "89b45d728be3eeec3ab7b8130af8808e297f1abd29dca76851a147f700c01ca9"
+    },
+    "entity_gt": {
+      "path": "outputs\\evaluation\\retrieval\\frozen_prod_entity_gt_100_conditional_fts_20260728\\vector_graph_conditional_fts.jsonl",
+      "sha256": "a194959958392cd55a43a4e522fc4a3ae61e292299a2ed47ffa828c5dbb145c1"
+    }
+  },
+  "graph_version": "final_v1",
+  "graph_queried": false,
+  "graph_expanded": false,
+  "supplemental_graph_used": false,
+  "generation_run": false,
+  "reference_use": "offline oracle diagnosis only",
+  "qa_corpus": {
+    "path": "data\\retrieval\\ahd_qa_train_v1.sqlite",
+    "sha256": "2949158054575242d0664c43c4f941119b0958d59923e4a16d6bc6eedfbaa0dc",
+    "metadata": {
+      "corpus_version": "ahd_qa_train_v1",
+      "source_csv": "AHD.csv",
+      "split_source": "qa_records_source_5000.csv",
+      "source_rows": 808472,
+      "indexed_rows": 807698,
+      "heldout_rows": 502,
+      "heldout_unique_questions": 500,
+      "duplicate_rows": 267,
+      "invalid_rows": 5,
+      "holdout_policy": "exclude all normalized eval_test questions"
+    }
+  },
+  "oracle_search": {
+    "scope": "full answer FTS shortlist then E5 rerank",
+    "candidate_k": 50,
+    "saved_top_k": 20,
+    "exact_normalized_source_question_excluded": true,
+    "full_808k_answer_vector_index_available": false
+  },
+  "thresholds": {
+    "strong_answer_similarity": 0.88,
+    "borderline_answer_similarity": 0.84,
+    "broad_answer_similarity": 0.8,
+    "minimum_scenario_score": 0.55,
+    "minimum_concept_coverage": 0.5,
+    "minimum_question_similarity": 0.8
+  },
+  "embedding": {
+    "model": "intfloat/multilingual-e5-base",
+    "dimension": 768,
+    "device": "cpu",
+    "offline": true
+  },
+  "runtime": {
+    "python": "3.13.12 (tags/v3.13.12:1cbe481, Feb  3 2026, 18:22:25) [MSC v.1944 64 bit (AMD64)]",
+    "git": {
+      "commit": "6c65ed7af27b332afa4e253f9936af61442c3ec1",
+      "dirty": true
+    }
+  }
+}

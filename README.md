@@ -54,6 +54,9 @@ Steps 1-4 implementations.
 | Generation evaluation | 100-query full-hybrid run complete | `outputs/evaluation/generation/evaluation_v1_e2e_full_hybrid_semanticfix_100q_v1` |
 | Evidence-local verifier re-audit | Complete, zero API calls | `outputs/evaluation/generation/evaluation_v1_e2e_full_hybrid_evidencelocal_100q_v1` |
 | Claim-first generation pilot | Complete, 3/3 generated | `outputs/evaluation/generation/evaluation_v1_claimfirst_pilot_3q_v1` |
+| Verifier v5 semantic safety-gate audit | Failed reserved 50-claim safety gate; disabled | `outputs/evaluation/claim_verifier/verifier_v5_reserved50_frozen_gate_20260730` |
+| Conditional cross-encoder rescue | 100-query pilot failed acceptance gate; disabled | `docs/CONDITIONAL_CROSS_ENCODER_RESCUE.md` |
+| Coverage-improvement ablations | Semantic verifier and retrieval rescue rejected | `docs/FINAL_COVERAGE_IMPROVEMENT_ABLATIONS.md` |
 
 ## Final Architecture
 
@@ -323,17 +326,34 @@ python src/step17_build_explainable_output.py --query "ما علاج الربو�
 
 - Final generation uses Groq `openai/gpt-oss-20b`, not Qwen.
 - The model receives only the query and selected Step 11 evidence.
-- Prompt `grounded_claim_first_v3` asks the model to select atomic cited claims
-  first, then compose `answer_ar` only from those claims in the same API call.
-- Strict JSON returns the Arabic answer, atomic claims, claim-specific citations,
-  QA IDs, relation IDs, and limitations.
-- Python removes invented IDs outside the evidence allowlist.
+- Current prompt `grounded_evidence_adaptive_v4_2` uses a strict single-passage
+  near-extractive mode only when one answer-origin item passes all direct-evidence
+  gates. Other non-empty contexts use a constrained partial/mixed mode.
+- Strict JSON returns at most two self-contained claims, exactly one allowlisted
+  evidence citation per claim, and an optional evidence-coverage limitation.
+- Python constructs the final answer from those claims and derives QA/relation
+  provenance from the cited Step 11 items; the model cannot author source IDs.
 - API failures are technical fallbacks, not medical answers.
 - Evaluation caches every successful call and retries HTTP 429 with backoff.
+- The frozen v3 evaluation remains the selected production result. A completed
+  generation-only v4.2 evaluation reused the exact saved Step 11 contexts for both
+  100-query cohorts but reduced substantive answers from 49 to 46 and surviving
+  claims from 72 to 56. Its differential review also identified 13 unsafe new
+  claims, so v4.2 is retained only as an unsuccessful ablation. See
+  `docs/EVIDENCE_ADAPTIVE_GENERATION_V4.md` and
+  `outputs/evaluation/generation/evidence_adaptive_v4_2_comparison_200q_20260729/FINAL_COMPARISON.md`.
+- Candidate `grounded_claim_first_v3_1` now combines v3's full-context coverage
+  with v4's strict claim schema and Python-derived provenance. Its 10-query
+  development pilot had zero technical failures and retained 5 claims across 4
+  substantive answers. The opt-in Verifier v5 hard-gate re-audit removed its one
+  unsafe lexical reinterpretation, leaving 4 claims across 3 substantive answers.
+  Both profiles remain disabled pending a fresh holdout. See
+  `docs/GENERATION_V3_1.md` and `docs/CLAIM_VERIFIER_V5.md`.
 
 ### Steps 13-15 changes
 
-- Claims are split atomically while preserving abbreviations such as `H. pylori`.
+- V4 structured claims are already atomic and are not split again, preventing
+  contextless fragments; legacy v3 answers retain their original splitter.
 - Limitation text is excluded even when the model incorrectly returns it as a
   structured factual claim.
 - Verification checks citations, normalized support, numbers, negation, anatomy,
@@ -358,6 +378,20 @@ python src/step17_build_explainable_output.py --query "ما علاج الربو�
 
 These changes reduced wrong graph evidence and unsafe unsupported claims. The main
 remaining research trade-off is high safety versus limited answer coverage.
+
+Verifier v5 and the conditional cross-encoder rescue are isolated development
+ablations. V5 keeps non-overridable citation, evidence, medication, anatomy,
+negation, number, and unrelated-condition gates, while allowing only soft
+intent/concept failures to be semantically adjudicated when explicitly enabled.
+Its deterministic post-semantic safety gate improved the development-tuned
+81-claim result to TP=60, TN=14, FP=0, FN=7 and F1=0.944882. That gain did not
+generalize to the reserved 50-claim audit: 8/13 unsafe claims were retained, so
+the candidate is rejected and remains disabled. The retrieval rescue runs only
+for empty or weak Step 11 contexts and cannot override hard clinical
+compatibility gates. Neither feature changes the frozen production
+configuration. See `docs/CLAIM_VERIFIER_V5.md`,
+`docs/CONDITIONAL_CROSS_ENCODER_RESCUE.md`, and
+`docs/FINAL_COVERAGE_IMPROVEMENT_ABLATIONS.md`.
 
 ### Steps 16-17
 

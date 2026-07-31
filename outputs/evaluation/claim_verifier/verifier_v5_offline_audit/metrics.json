@@ -1,0 +1,45 @@
+{
+  "status": "development_only",
+  "api_calls": 0,
+  "human_reviewed_claims": 81,
+  "human_valid_claims": 67,
+  "human_invalid_claims": 14,
+  "v5_hard_gate": {
+    "valid_claims_blocked": 1,
+    "invalid_claims_blocked": 4,
+    "valid_claims_semantically_eligible": 66,
+    "invalid_claims_semantically_eligible": 9
+  },
+  "prior_20b_pilot": {
+    "before_v5": {
+      "claims": 17,
+      "tp": 10,
+      "tn": 4,
+      "fp": 3,
+      "fn": 0,
+      "precision": 0.769231,
+      "recall": 1.0,
+      "specificity": 0.571429
+    },
+    "after_v5_hard_gates": {
+      "claims": 17,
+      "tp": 9,
+      "tn": 7,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "recall": 0.9,
+      "specificity": 1.0
+    }
+  },
+  "v31_pilot": {
+    "claims": 13,
+    "claims_with_new_hard_failures": 2,
+    "clinical_relation_mismatches": 1
+  },
+  "limitations": [
+    "The 81 reviewed disputes are development data, not a fresh test set.",
+    "The post-v5 20B result is an offline gate replay, not a new API run.",
+    "V5 remains disabled until a fresh claim-level holdout passes."
+  ]
+}

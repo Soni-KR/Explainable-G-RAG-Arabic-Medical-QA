@@ -93,6 +93,14 @@ class QACorpusConfig:
     semantic_rerank_enabled: bool = False
     semantic_fallback_enabled: bool = True
     semantic_fallback_candidate_k: int = 40
+    cross_encoder_rescue_enabled: bool = False
+    cross_encoder_model: str = (
+        "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+    )
+    cross_encoder_candidate_k: int = 30
+    cross_encoder_batch_size: int = 8
+    cross_encoder_weight: float = 0.35
+    cross_encoder_min_score: float = 0.55
 
 
 @dataclass(frozen=True)
@@ -133,7 +141,7 @@ class AnswerGenerationConfig:
     model: str = "openai/gpt-oss-20b"
     reasoning_effort: str = "low"
     temperature: float = 0.0
-    prompt_version: str = "grounded_claim_first_v3"
+    prompt_version: str = "grounded_evidence_adaptive_v4_2"
     max_attempts: int = 3
     retry_base_seconds: float = 2.0
     retry_max_seconds: float = 30.0
@@ -144,6 +152,7 @@ class AnswerGenerationConfig:
 class ClaimAdjudicationConfig:
     """Optional semantic review for claims rejected only by soft lexical gates."""
 
+    verifier_profile: str = "deterministic_v3"
     enabled: bool = False
     provider: str = "groq"
     model: str = "openai/gpt-oss-20b"
@@ -220,6 +229,30 @@ def load_config() -> AppConfig:
                 "AHD_QA_SEMANTIC_FALLBACK_CANDIDATE_K",
                 40,
             ),
+            cross_encoder_rescue_enabled=_env_bool(
+                "AHD_CROSS_ENCODER_RESCUE_ENABLED",
+                False,
+            ),
+            cross_encoder_model=_env(
+                "AHD_CROSS_ENCODER_MODEL",
+                "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+            ),
+            cross_encoder_candidate_k=_env_int(
+                "AHD_CROSS_ENCODER_CANDIDATE_K",
+                30,
+            ),
+            cross_encoder_batch_size=_env_int(
+                "AHD_CROSS_ENCODER_BATCH_SIZE",
+                8,
+            ),
+            cross_encoder_weight=_env_float(
+                "AHD_CROSS_ENCODER_WEIGHT",
+                0.35,
+            ),
+            cross_encoder_min_score=_env_float(
+                "AHD_CROSS_ENCODER_MIN_SCORE",
+                0.55,
+            ),
         ),
         retrieval=RetrievalConfig(
             entity_top_k=_env_int("AHD_ENTITY_TOP_K", 10),
@@ -269,13 +302,20 @@ def load_config() -> AppConfig:
             model=_env("ANSWER_GENERATION_MODEL", "openai/gpt-oss-20b"),
             reasoning_effort=_env("ANSWER_GENERATION_REASONING_EFFORT", "low"),
             temperature=_env_float("ANSWER_GENERATION_TEMPERATURE", 0.0),
-            prompt_version=_env("ANSWER_GENERATION_PROMPT_VERSION", "grounded_claim_first_v3"),
+            prompt_version=_env(
+                "ANSWER_GENERATION_PROMPT_VERSION",
+                "grounded_evidence_adaptive_v4_2",
+            ),
             max_attempts=_env_int("ANSWER_GENERATION_MAX_ATTEMPTS", 3),
             retry_base_seconds=_env_float("ANSWER_GENERATION_RETRY_BASE_SECONDS", 2.0),
             retry_max_seconds=_env_float("ANSWER_GENERATION_RETRY_MAX_SECONDS", 30.0),
             groq_api_key=_env("GROQ_API_KEY", ""),
         ),
         claim_adjudication=ClaimAdjudicationConfig(
+            verifier_profile=_env(
+                "CLAIM_VERIFIER_PROFILE",
+                "deterministic_v3",
+            ),
             enabled=_env_bool("CLAIM_ADJUDICATION_ENABLED", False),
             provider=_env("CLAIM_ADJUDICATION_PROVIDER", "groq"),
             model=_env("CLAIM_ADJUDICATION_MODEL", "openai/gpt-oss-20b"),

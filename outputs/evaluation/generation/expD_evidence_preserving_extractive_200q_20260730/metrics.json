@@ -1,0 +1,643 @@
+{
+  "status": "ok",
+  "cohorts": {
+    "ahd_reference_100": {
+      "baseline": {
+        "queries": 100,
+        "substantive_answers": 29,
+        "retained_claims": 39,
+        "answerability": {
+          "fully_answerable": 3,
+          "generation_unavailable": 1,
+          "insufficient_evidence": 70,
+          "partially_answerable": 8,
+          "supported_but_incomplete": 18
+        },
+        "pre_mitigation_claims": {
+          "total": 122,
+          "status_counts": {
+            "supported": 39,
+            "unsupported": 78,
+            "weakly_supported": 5
+          },
+          "supported_claim_rate": 0.319672
+        },
+        "citation_validity": 1.0,
+        "citation_count": 39,
+        "technical_failures": 1,
+        "schema_failures": 0,
+        "bertscore": {
+          "status": "computed",
+          "evaluated_query_count": 29,
+          "bertscore_f1": 0.675517
+        },
+        "latency_ms": {
+          "end_to_end": {
+            "mean": 7761.94567,
+            "median": 11648.742,
+            "p95": 12414.93715,
+            "total": 776194.567
+          },
+          "step08_query_understanding": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step08_retrieval_planning": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step09_hybrid_retrieval": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step10_subgraph_reranking": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step11_context_construction": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step12_answer_generation": {
+            "mean": 567.51435,
+            "median": 599.9325,
+            "p95": 1206.28555,
+            "total": 56751.435
+          },
+          "step13_claim_extraction": {
+            "mean": 0.02913,
+            "median": 0.015,
+            "p95": 0.0933,
+            "total": 2.913
+          },
+          "step14_claim_verification": {
+            "mean": 22.4451,
+            "median": 2.489,
+            "p95": 70.2871,
+            "total": 2244.51
+          },
+          "step15_hallucination_mitigation": {
+            "mean": 3.68619,
+            "median": 0.4855,
+            "p95": 22.38545,
+            "total": 368.619
+          },
+          "step16_reliability_scoring": {
+            "mean": 0.04486,
+            "median": 0.023,
+            "p95": 0.1522,
+            "total": 4.486
+          }
+        }
+      },
+      "candidate": {
+        "queries": 100,
+        "substantive_answers": 29,
+        "retained_claims": 39,
+        "answerability": {
+          "fully_answerable": 3,
+          "generation_unavailable": 1,
+          "insufficient_evidence": 70,
+          "partially_answerable": 8,
+          "supported_but_incomplete": 18
+        },
+        "pre_mitigation_claims": {
+          "total": 122,
+          "status_counts": {
+            "supported": 39,
+            "unsupported": 78,
+            "weakly_supported": 5
+          },
+          "supported_claim_rate": 0.319672
+        },
+        "citation_validity": 1.0,
+        "citation_count": 39,
+        "technical_failures": 1,
+        "schema_failures": 0,
+        "bertscore": {
+          "status": "computed",
+          "evaluated_query_count": 29,
+          "bertscore_f1": 0.675517
+        },
+        "latency_ms": {
+          "end_to_end": {
+            "mean": 7761.94567,
+            "median": 11648.742,
+            "p95": 12414.93715,
+            "total": 776194.567
+          },
+          "step08_query_understanding": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step08_retrieval_planning": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step09_hybrid_retrieval": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step10_subgraph_reranking": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step11_context_construction": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step12_answer_generation": {
+            "mean": 567.51435,
+            "median": 599.9325,
+            "p95": 1206.28555,
+            "total": 56751.435
+          },
+          "step13_claim_extraction": {
+            "mean": 0.02913,
+            "median": 0.015,
+            "p95": 0.0933,
+            "total": 2.913
+          },
+          "step14_claim_verification": {
+            "mean": 22.4451,
+            "median": 2.489,
+            "p95": 70.2871,
+            "total": 2244.51
+          },
+          "step15_hallucination_mitigation": {
+            "mean": 3.68619,
+            "median": 0.4855,
+            "p95": 22.38545,
+            "total": 368.619
+          },
+          "step16_reliability_scoring": {
+            "mean": 0.04486,
+            "median": 0.023,
+            "p95": 0.1522,
+            "total": 4.486
+          }
+        }
+      }
+    },
+    "entity_ground_truth_100": {
+      "baseline": {
+        "queries": 100,
+        "substantive_answers": 25,
+        "retained_claims": 30,
+        "answerability": {
+          "fully_answerable": 2,
+          "insufficient_evidence": 75,
+          "partially_answerable": 12,
+          "supported_but_incomplete": 11
+        },
+        "pre_mitigation_claims": {
+          "total": 123,
+          "status_counts": {
+            "supported": 30,
+            "unsupported": 84,
+            "weakly_supported": 9
+          },
+          "supported_claim_rate": 0.243902
+        },
+        "citation_validity": 1.0,
+        "citation_count": 30,
+        "technical_failures": 0,
+        "schema_failures": 0,
+        "bertscore": {
+          "status": "computed",
+          "evaluated_query_count": 25,
+          "bertscore_f1": 0.68062
+        },
+        "latency_ms": {
+          "end_to_end": {
+            "mean": 8091.31568,
+            "median": 11736.4335,
+            "p95": 12447.49435,
+            "total": 809131.568
+          },
+          "step08_query_understanding": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step08_retrieval_planning": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step09_hybrid_retrieval": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step10_subgraph_reranking": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step11_context_construction": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step12_answer_generation": {
+            "mean": 488.00667,
+            "median": 552.326,
+            "p95": 1099.57955,
+            "total": 48800.667
+          },
+          "step13_claim_extraction": {
+            "mean": 0.02974,
+            "median": 0.018,
+            "p95": 0.1061,
+            "total": 2.974
+          },
+          "step14_claim_verification": {
+            "mean": 16.96046,
+            "median": 2.7735,
+            "p95": 68.6075,
+            "total": 1696.046
+          },
+          "step15_hallucination_mitigation": {
+            "mean": 1.48504,
+            "median": 0.4815,
+            "p95": 5.07765,
+            "total": 148.504
+          },
+          "step16_reliability_scoring": {
+            "mean": 0.05349,
+            "median": 0.032,
+            "p95": 0.1241,
+            "total": 5.349
+          }
+        }
+      },
+      "candidate": {
+        "queries": 100,
+        "substantive_answers": 27,
+        "retained_claims": 32,
+        "answerability": {
+          "fully_answerable": 2,
+          "insufficient_evidence": 73,
+          "partially_answerable": 14,
+          "supported_but_incomplete": 11
+        },
+        "pre_mitigation_claims": {
+          "total": 120,
+          "status_counts": {
+            "supported": 32,
+            "unsupported": 80,
+            "weakly_supported": 8
+          },
+          "supported_claim_rate": 0.266667
+        },
+        "citation_validity": 1.0,
+        "citation_count": 32,
+        "technical_failures": 0,
+        "schema_failures": 0,
+        "bertscore": {
+          "status": "computed",
+          "evaluated_query_count": 27,
+          "bertscore_f1": 0.678059
+        },
+        "latency_ms": {
+          "end_to_end": {
+            "mean": 8075.57918,
+            "median": 11696.2425,
+            "p95": 12447.49435,
+            "total": 807557.918
+          },
+          "step08_query_understanding": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step08_retrieval_planning": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step09_hybrid_retrieval": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step10_subgraph_reranking": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step11_context_construction": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "total": 0.0
+          },
+          "step12_answer_generation": {
+            "mean": 472.30784,
+            "median": 538.5135,
+            "p95": 1099.57955,
+            "total": 47230.784
+          },
+          "step13_claim_extraction": {
+            "mean": 0.02939,
+            "median": 0.0175,
+            "p95": 0.1061,
+            "total": 2.939
+          },
+          "step14_claim_verification": {
+            "mean": 16.89317,
+            "median": 2.589,
+            "p95": 68.6075,
+            "total": 1689.317
+          },
+          "step15_hallucination_mitigation": {
+            "mean": 1.51505,
+            "median": 0.4855,
+            "p95": 5.07765,
+            "total": 151.505
+          },
+          "step16_reliability_scoring": {
+            "mean": 0.05345,
+            "median": 0.032,
+            "p95": 0.1241,
+            "total": 5.345
+          }
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "baseline": {
+      "queries": 200,
+      "substantive_answers": 54,
+      "retained_claims": 69,
+      "answerability": {
+        "fully_answerable": 5,
+        "generation_unavailable": 1,
+        "insufficient_evidence": 145,
+        "partially_answerable": 20,
+        "supported_but_incomplete": 29
+      },
+      "pre_mitigation_claims": {
+        "total": 245,
+        "status_counts": {
+          "supported": 69,
+          "unsupported": 162,
+          "weakly_supported": 14
+        },
+        "supported_claim_rate": 0.281633
+      },
+      "citation_validity": 1.0,
+      "citation_count": 69,
+      "technical_failures": 1,
+      "schema_failures": 0,
+      "bertscore": {
+        "status": "computed",
+        "evaluated_query_count": 54,
+        "bertscore_f1": 0.677879
+      },
+      "latency_ms": {
+        "end_to_end": {
+          "mean": 7926.630675,
+          "median": 11704.1635,
+          "p95": 12446.2197,
+          "total": 1585326.135
+        },
+        "step08_query_understanding": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step11_context_construction": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step12_answer_generation": {
+          "mean": 527.76051,
+          "median": 576.5275,
+          "p95": 1199.5982,
+          "total": 105552.102
+        },
+        "step13_claim_extraction": {
+          "mean": 0.029435,
+          "median": 0.016,
+          "p95": 0.09925,
+          "total": 5.887
+        },
+        "step14_claim_verification": {
+          "mean": 19.70278,
+          "median": 2.506,
+          "p95": 69.93085,
+          "total": 3940.556
+        },
+        "step15_hallucination_mitigation": {
+          "mean": 2.585615,
+          "median": 0.4815,
+          "p95": 13.21965,
+          "total": 517.123
+        },
+        "step16_reliability_scoring": {
+          "mean": 0.049175,
+          "median": 0.026,
+          "p95": 0.14035,
+          "total": 9.835
+        }
+      }
+    },
+    "candidate": {
+      "queries": 200,
+      "substantive_answers": 56,
+      "retained_claims": 71,
+      "answerability": {
+        "fully_answerable": 5,
+        "generation_unavailable": 1,
+        "insufficient_evidence": 143,
+        "partially_answerable": 22,
+        "supported_but_incomplete": 29
+      },
+      "pre_mitigation_claims": {
+        "total": 242,
+        "status_counts": {
+          "supported": 71,
+          "unsupported": 158,
+          "weakly_supported": 13
+        },
+        "supported_claim_rate": 0.293388
+      },
+      "citation_validity": 1.0,
+      "citation_count": 71,
+      "technical_failures": 1,
+      "schema_failures": 0,
+      "bertscore": {
+        "status": "computed",
+        "evaluated_query_count": 56,
+        "bertscore_f1": 0.676742
+      },
+      "latency_ms": {
+        "end_to_end": {
+          "mean": 7918.762425,
+          "median": 11684.4355,
+          "p95": 12446.2197,
+          "total": 1583752.485
+        },
+        "step08_query_understanding": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step08_retrieval_planning": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step09_hybrid_retrieval": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step10_subgraph_reranking": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step11_context_construction": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p95": 0.0,
+          "total": 0.0
+        },
+        "step12_answer_generation": {
+          "mean": 519.911095,
+          "median": 571.4045,
+          "p95": 1199.5982,
+          "total": 103982.219
+        },
+        "step13_claim_extraction": {
+          "mean": 0.02926,
+          "median": 0.016,
+          "p95": 0.09925,
+          "total": 5.852
+        },
+        "step14_claim_verification": {
+          "mean": 19.669135,
+          "median": 2.5005,
+          "p95": 69.93085,
+          "total": 3933.827
+        },
+        "step15_hallucination_mitigation": {
+          "mean": 2.60062,
+          "median": 0.4855,
+          "p95": 13.21965,
+          "total": 520.124
+        },
+        "step16_reliability_scoring": {
+          "mean": 0.049155,
+          "median": 0.026,
+          "p95": 0.14035,
+          "total": 9.831
+        }
+      }
+    }
+  },
+  "fallback": {
+    "eligible_queries": 85,
+    "selected_queries": 2,
+    "no_supported_sentence": 83,
+    "automatic_invariant_failures": 0
+  },
+  "policy": {
+    "fallback_version": "evidence_preserving_extractive_v1",
+    "min_answer_relevance": 0.6,
+    "min_original_question_relevance": 0.5,
+    "min_intent_support": 0.75,
+    "min_query_concept_coverage": 0.5,
+    "min_query_constraint_coverage": 0.5,
+    "min_source_reliability": 0.9,
+    "min_sentence_query_relevance": 0.25,
+    "min_sentence_chars": 12,
+    "max_sentence_chars": 700,
+    "max_claims_per_query": 1,
+    "citations_per_claim": 1,
+    "semantic_override_enabled": false,
+    "supplemental_graph_enabled": false,
+    "verifier": "deterministic_v3_unchanged"
+  },
+  "promotion": {
+    "status": "DO_NOT_PROMOTE_AUTOMATIC_TARGETS_NOT_MET",
+    "automatic_gates_passed": false,
+    "gates": {
+      "substantive_answers_above_54": true,
+      "retained_claims_above_72": false,
+      "citation_validity_one": true,
+      "schema_failures_zero": true,
+      "automatic_extractiveness_invariants_zero": true,
+      "differential_medical_review_complete": false,
+      "unsafe_differential_claims_zero": false
+    },
+    "scope_note": "Internal development result only; medical safety is not externally confirmed without differential human review."
+  },
+  "artifacts": {
+    "cohort_a_candidate": "outputs/evaluation/generation/expD_evidence_preserving_extractive_200q_20260730/ahd_reference_100.jsonl",
+    "cohort_b_candidate": "outputs/evaluation/generation/expD_evidence_preserving_extractive_200q_20260730/entity_ground_truth_100.jsonl",
+    "fallback_attempts": "outputs/evaluation/generation/expD_evidence_preserving_extractive_200q_20260730/fallback_attempts.jsonl",
+    "differential_safety_review": "outputs/evaluation/generation/expD_evidence_preserving_extractive_200q_20260730/differential_safety_review.csv",
+    "metrics": "outputs/evaluation/generation/expD_evidence_preserving_extractive_200q_20260730/metrics.json",
+    "manifest": "outputs/evaluation/generation/expD_evidence_preserving_extractive_200q_20260730/manifest.json",
+    "report": "outputs/evaluation/generation/expD_evidence_preserving_extractive_200q_20260730/README.md"
+  }
+}
