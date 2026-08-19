@@ -9,6 +9,7 @@ labels already entered during a later refresh.
 
 import argparse
 import csv
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -16,10 +17,6 @@ from typing import Any
 
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[1]))
-
-from src.query_relevance import candidate_relevance_features
-from src.step09_hybrid_retrieval import select_relevance_phrases
-
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RETRIEVAL = (
@@ -73,6 +70,26 @@ FIELDS = (
     *HUMAN_FIELDS,
 )
 
+# Blinded review columns deliberately omit the reference answer, retrieval rank,
+# model scores, Step 8 intent, and deterministic reranking features.
+INDEPENDENT_FIELDS = (
+    "annotation_version",
+    "query_id",
+    "query",
+    "query_group",
+    "candidate_type",
+    "candidate_id",
+    "qa_id",
+    "source_quality",
+    "retrieval_channel",
+    "candidate_question",
+    "candidate_answer_or_evidence",
+    "relation_type",
+    "source_entity_name",
+    "target_entity_name",
+    *HUMAN_FIELDS,
+)
+
 
 def compact(value: Any, limit: int = 2500) -> str:
     text = " ".join(str(value or "").split())
@@ -114,6 +131,8 @@ def feature_columns(features: dict[str, object]) -> dict[str, object]:
 
 
 def record_medical_phrases(record: dict[str, Any]) -> list[str]:
+    from src.step09_hybrid_retrieval import select_relevance_phrases
+
     analysis = dict(record.get("query_analysis") or {})
     return select_relevance_phrases(
         list(analysis.get("medical_phrases") or []),
@@ -122,6 +141,8 @@ def record_medical_phrases(record: dict[str, Any]) -> list[str]:
 
 
 def evidence_row(record: dict[str, Any], item: dict[str, Any], rank: int) -> dict[str, object]:
+    from src.query_relevance import candidate_relevance_features
+
     metadata = dict(item.get("metadata") or {})
     analysis = dict(record.get("query_analysis") or {})
     query = str(analysis.get("reformulated_query") or record.get("query") or "")
@@ -166,6 +187,8 @@ def evidence_row(record: dict[str, Any], item: dict[str, Any], rank: int) -> dic
 
 
 def relation_row(record: dict[str, Any], item: dict[str, Any], rank: int) -> dict[str, object]:
+    from src.query_relevance import candidate_relevance_features
+
     metadata = dict(item.get("metadata") or {})
     evidence_items = list(metadata.get("evidence_items") or [])
     evidence_text = " ".join(
@@ -289,12 +312,112 @@ def build_rows(
     return output
 
 
+def blinded_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Remove evaluation leakage and deterministically blind candidate order."""
+
+    output = [{field: row.get(field, "") for field in INDEPENDENT_FIELDS} for row in rows]
+    output.sort(
+        key=lambda row: (
+            str(row["query_id"]),
+            hashlib.sha256(
+                (
+                    "final_v2_independent_relevance_v1|"
+                    f"{row['query_id']}|{row['candidate_type']}|{row['candidate_id']}"
+                ).encode("utf-8")
+            ).hexdigest(),
+        )
+    )
+    return output
+
+
+def build_independent_rows(
+    records: list[dict[str, Any]], *, evidence_top_k: int, relation_top_k: int
+) -> list[dict[str, object]]:
+    """Build the blinded queue without importing retrieval or Neo4j code."""
+
+    rows: list[dict[str, object]] = []
+    for record in records:
+        base = {
+            "annotation_version": "final_v2_independent_relevance_v1",
+            "query_id": str(record.get("query_id") or ""),
+            "query": str(record.get("query") or ""),
+            "query_group": str(record.get("query_group") or ""),
+        }
+        for item in list(record.get("evidence") or [])[:evidence_top_k]:
+            metadata = dict(item.get("metadata") or {})
+            rows.append(
+                {
+                    **base,
+                    "candidate_type": "evidence",
+                    "candidate_id": str(item.get("evidence_id") or item.get("source_id") or ""),
+                    "qa_id": str(item.get("qa_id") or ""),
+                    "source_quality": str(item.get("source_quality") or "unknown"),
+                    "retrieval_channel": str(metadata.get("retrieval_channel") or "unknown"),
+                    "candidate_question": compact(item.get("question")),
+                    "candidate_answer_or_evidence": compact(item.get("answer") or item.get("text")),
+                    "relation_type": "",
+                    "source_entity_name": "",
+                    "target_entity_name": "",
+                    "relevance_label": "",
+                    "error_reason": "",
+                    "secondary_error_reason": "",
+                    "annotator_id": "",
+                    "annotation_status": "pending_human_annotation",
+                    "annotation_notes": "",
+                }
+            )
+        for item in list(record.get("relations") or [])[:relation_top_k]:
+            metadata = dict(item.get("metadata") or {})
+            evidence_items = list(metadata.get("evidence_items") or [])
+            evidence = " ".join(
+                [
+                    str(item.get("evidence") or ""),
+                    *[
+                        str(source.get("evidence") or source.get("answer") or "")
+                        for source in evidence_items
+                    ],
+                ]
+            )
+            rows.append(
+                {
+                    **base,
+                    "candidate_type": "relation",
+                    "candidate_id": str(item.get("relation_id") or ""),
+                    "qa_id": str(item.get("qa_id") or ""),
+                    "source_quality": str(
+                        next(
+                            (source.get("source_quality") for source in evidence_items if source.get("source_quality")),
+                            "unknown",
+                        )
+                    ),
+                    "retrieval_channel": "graph_relation",
+                    "candidate_question": "",
+                    "candidate_answer_or_evidence": compact(evidence),
+                    "relation_type": str(item.get("relation_type") or ""),
+                    "source_entity_name": compact(item.get("source_name"), 300),
+                    "target_entity_name": compact(item.get("target_name"), 300),
+                    "relevance_label": "",
+                    "error_reason": "",
+                    "secondary_error_reason": "",
+                    "annotator_id": "",
+                    "annotation_status": "pending_human_annotation",
+                    "annotation_notes": "",
+                }
+            )
+    return blinded_rows(rows)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Prepare human relevance labels for frozen candidates.")
     parser.add_argument("--retrieval-jsonl", type=Path, default=DEFAULT_RETRIEVAL)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--evidence-top-k", type=int, default=5)
     parser.add_argument("--relation-top-k", type=int, default=3)
+    parser.add_argument(
+        "--independent",
+        action="store_true",
+        help="Create a blinded queue without references, ranks, scores, or model features.",
+    )
     parser.add_argument(
         "--refresh",
         action="store_true",
@@ -307,15 +430,24 @@ def main() -> int:
         raise FileExistsError(f"Annotation file already exists; use --refresh: {output_path}")
     records = read_jsonl(retrieval_path)
     preserved = existing_human_labels(output_path) if args.refresh else {}
-    rows = build_rows(
-        records,
-        evidence_top_k=max(0, args.evidence_top_k),
-        relation_top_k=max(0, args.relation_top_k),
-        preserved=preserved,
-    )
+    if args.independent:
+        rows = build_independent_rows(
+            records,
+            evidence_top_k=max(0, args.evidence_top_k),
+            relation_top_k=max(0, args.relation_top_k),
+        )
+        fields = INDEPENDENT_FIELDS
+    else:
+        rows = build_rows(
+            records,
+            evidence_top_k=max(0, args.evidence_top_k),
+            relation_top_k=max(0, args.relation_top_k),
+            preserved=preserved,
+        )
+        fields = FIELDS
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FIELDS)
+        writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)
     query_ids_with_candidates = {row["query_id"] for row in rows}

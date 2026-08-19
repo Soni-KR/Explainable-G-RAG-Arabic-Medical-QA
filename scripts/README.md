@@ -1,37 +1,42 @@
-# Script Entry Points
+# Script Index
 
-The colleague's Steps 1-3 implementation is intentionally not part of this active
-repository. Our executable contribution begins with validation of the supplied
-entity/relation hand-off.
+The scripts remain in one directory because several frozen evaluation manifests
+record their exact paths. They are grouped here by purpose.
 
-## Graph Validation
+## Graph Construction
 
-- `validate_and_finalize_colleague_graph.py`: clean the supplied entity layer,
-  resume evidence-based relation validation, preserve all decisions, create inverse
-  edges, validate references, and freeze `final_v1`.
+- `validate_and_finalize_colleague_graph.py`: validate and freeze the original
+  hand-off as `final_v1`.
+- `step03_expand_graph_entities.py` and `step03c_batch_expand_entities.py`: resumable
+  entity expansion.
+- `step04a_prepare_expansion_relations.py` and
+  `step04b_validate_expansion_relations.py`: relation candidate preparation and
+  evidence-based validation.
+- `step05_build_final_graph_v2.py`: additive `final_v1` + expansion merge with
+  referential-integrity validation.
+- `step09a_build_qa_corpus.py`: build the held-out-safe full-text QA index.
 
-The script reads only `outputs/final_graph/provenance` and refuses to overwrite an
-existing frozen graph manifest.
+Re-running Steps 3-5 from raw chunks requires the collaborator's upstream
+preprocessed/chunked hand-off and the locally licensed AHD source; those large
+inputs are intentionally not published. The frozen CSV graph can still be imported
+and fully validated without them.
 
-## Evaluation
+## Final Evaluation
 
-- `prepare_evaluation_annotations.py`: independent retrieval/claim templates.
-- `preannotate_evaluation_from_dataset.py`: clearly marked provisional AHD labels.
-- `validate_evaluation_annotations.py`: schema and annotation-state validation.
-- `prepare_human_claim_annotations.py`: human claim-review queue generation.
-- `prepare_candidate_relevance_annotations.py`: top-candidate review queue with
-  2/1/0 relevance labels and clinical mismatch reasons; preserves existing human
-  labels when the queue is refreshed.
-- `train_candidate_reranker.py`: validate confirmed candidate labels and train an
-  interpretable query-grouped two-stage logistic-regression reranker.
-- `evaluate_reranker_context_selection.py`: replay the unchanged Step 11 selector
-  using out-of-fold learned scores and compare selected contexts with human labels.
-- `run_partial_only_fts_expansion.py`: search three safe query variants for only
-  the 44 partial-only queries, exclude old QA IDs, deduplicate new hits, and create
-  a human-review queue without using reference answers.
-- `run_retrieval_ablation.py`: five frozen retrieval modes.
-- `run_generation_ablation.py`: generation ablations and resumable frozen retrieval.
-- `evaluation_common.py`: manifests, serialization, hashes, and shared records.
-- `build_qualitative_pipeline_report.py`: readable Steps 8-12 inspection report.
+- `run_retrieval_ablation.py`: vector, graph, lexical, and hybrid retrieval modes.
+- `build_conditional_fts_ablation.py`: conditional full-text expansion over frozen
+  retrieval.
+- `run_generation_ablation.py`: resumable Steps 12-17 evaluation.
+- `prepare_candidate_relevance_annotations.py`: create blinded candidate queues.
+- `evaluate_final_v2_relevance.py`: authoritative offline final-v2 metrics/report.
+- `evaluation_common.py`: shared manifest, JSONL, latency, and cohort utilities.
 
-The reusable Neo4j, embeddings, and Steps 8-17 pipeline lives in `src/`.
+## Annotation and Diagnostic Utilities
+
+The remaining scripts reproduce documented development diagnostics: entity-GT
+trials, claim-verifier audits, targeted FTS analyses, reranker studies, oracle
+answerability checks, and rejected coverage-improvement ablations. They do not
+change the production configuration unless an explicit opt-in flag is supplied.
+
+Every runner writes to a new run ID and refuses to overwrite frozen artifacts.
+Secrets are read from `.env` and must never be passed as CLI arguments or committed.

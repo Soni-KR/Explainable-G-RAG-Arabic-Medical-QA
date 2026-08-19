@@ -48,28 +48,44 @@ if __package__ in {None, ""}:
 # The repository root is one directory above this ``src`` file.
 ROOT = Path(__file__).resolve().parents[1]
 # AppConfig supplies final Neo4j, model, dimension, and index-name settings.
-from src.config import AppConfig, load_final_config
+from src.config import AppConfig, load_final_config, load_final_v2_config
 # Neo4jRepository owns the authenticated driver and read transaction helper.
 from src.neo4j_repository import Neo4jRepository
 
 
 # These names equal the Neo4j labels and the stored embedding_document_type values.
 DOCUMENT_TYPES = ("MedicalEntity", "EvidenceMention", "QARecord")
-# Frozen graph counts are safety gates: execution stops if final_v1 unexpectedly changes.
-EXPECTED_GRAPH_COUNTS = {
-    # One passage is built for every canonical medical entity node.
-    "MedicalEntity": 2175,
-    # One passage is built for every evidence mention linked to an entity.
-    "EvidenceMention": 5767,
-    # One passage is built for every full or evidence-reconstructed QA record.
-    "QARecord": 2549,
+# Frozen graph counts are safety gates: execution stops if either snapshot drifts.
+EXPECTED_GRAPH_COUNTS_BY_VERSION = {
+    "final_v1": {
+        "MedicalEntity": 2175,
+        "EvidenceMention": 5767,
+        "QARecord": 2549,
+    },
+    "final_v2": {
+        "MedicalEntity": 4532,
+        "EvidenceMention": 10657,
+        "QARecord": 4139,
+    },
 }
+# Preserve the original public constant for existing imports and final_v1 tests.
+EXPECTED_GRAPH_COUNTS = EXPECTED_GRAPH_COUNTS_BY_VERSION["final_v1"]
 # Thirty-two texts per inference batch balances CPU memory and throughput.
 DEFAULT_BATCH_SIZE = 32
 # At most 200 encoded rows are sent in one Neo4j UNWIND write transaction.
 DEFAULT_WRITE_BATCH_SIZE = 200
 # Dry runs expose only two truncated examples per type to keep logs concise.
 SAMPLE_COUNT = 2
+
+
+def load_graph_config(graph_version: str) -> AppConfig:
+    """Load one explicitly selected frozen graph configuration."""
+
+    if graph_version == "final_v1":
+        return load_final_config()
+    if graph_version == "final_v2":
+        return load_final_v2_config()
+    raise ValueError(f"Unsupported graph version: {graph_version}")
 
 
 # Freeze records so code cannot accidentally mutate a passage after hashing it.
@@ -502,6 +518,7 @@ RETURN count(n) AS total,
 def verify_embeddings(
     repository: Neo4jRepository,
     config: AppConfig,
+    expected_counts: dict[str, int] | None = None,
 ) -> tuple[dict[str, dict[str, int]], list[dict[str, Any]], bool]:
     """Validate every vector/metadata field and all three index population states."""
 
@@ -525,8 +542,9 @@ def verify_embeddings(
     # Inspect only the configured final vector indexes.
     indexes = vector_index_states(repository, config)
     # Vectors pass only when totals match and every error counter is zero.
+    frozen_counts = expected_counts or EXPECTED_GRAPH_COUNTS
     vectors_ok = all(
-        row["total"] == EXPECTED_GRAPH_COUNTS[document_type]
+        row["total"] == frozen_counts[document_type]
         and all(row[key] == 0 for key in row if key != "total")
         for document_type, row in results.items()
     )
@@ -589,11 +607,13 @@ def sanitize_sample(text: str, limit: int = 180) -> str:
 def validate_dry_run_documents(
     documents: dict[str, list[EmbeddingDocument]],
     graph_counts: dict[str, int],
+    expected_counts: dict[str, int] | None = None,
 ) -> None:
     """Stop before model loading/writes when graph counts or passage text are invalid."""
 
-    # Compare every document type against the frozen final_v1 manifest counts.
-    for document_type, expected in EXPECTED_GRAPH_COUNTS.items():
+    # Compare every document type against the selected frozen graph manifest.
+    frozen_counts = expected_counts or EXPECTED_GRAPH_COUNTS
+    for document_type, expected in frozen_counts.items():
         # Count constructed passages.
         actual = len(documents[document_type])
         # Count source nodes read directly from Neo4j.
@@ -610,14 +630,20 @@ def validate_dry_run_documents(
             raise RuntimeError(f"Empty {document_type} passages: {empty_ids[:5]}")
 
 
-def dry_run(batch_size: int, load_model_for_dimension: bool) -> int:
+def dry_run(
+    batch_size: int,
+    load_model_for_dimension: bool,
+    graph_version: str = "final_v1",
+) -> int:
     """Validate final targeting, passages, counts, model dimension, and index plan."""
 
-    # Load the isolated final configuration, not the trial/default fallback.
-    config = load_final_config()
-    # Refuse to proceed if environment overrides point at the trial server/version.
-    if config.graph_version != "final_v1" or config.neo4j.uri != "bolt://localhost:7688":
-        raise RuntimeError("Step 6 must target final_v1 at bolt://localhost:7688")
+    # Load only the explicitly selected frozen graph, never the trial/default graph.
+    config = load_graph_config(graph_version)
+    if config.graph_version != graph_version:
+        raise RuntimeError(
+            f"Requested {graph_version}, but configuration resolved to {config.graph_version}."
+        )
+    expected_counts = EXPECTED_GRAPH_COUNTS_BY_VERSION[graph_version]
 
     # Open one read-only repository context for all dry-run Neo4j inspection.
     with Neo4jRepository(config=config) as repository:
@@ -628,7 +654,7 @@ def dry_run(batch_size: int, load_model_for_dimension: bool) -> int:
         # Inspect whether matching vector indexes already exist.
         indexes = vector_index_states(repository, config)
     # Stop on count drift or empty passages before optional model loading.
-    validate_dry_run_documents(documents, graph_counts)
+    validate_dry_run_documents(documents, graph_counts, expected_counts)
 
     # Structural inspection can skip expensive Torch/model initialization.
     device = "not_loaded"
@@ -676,14 +702,20 @@ def dry_run(batch_size: int, load_model_for_dimension: bool) -> int:
     return 0
 
 
-def execute_indexing(batch_size: int, write_batch_size: int) -> int:
+def execute_indexing(
+    batch_size: int,
+    write_batch_size: int,
+    graph_version: str = "final_v1",
+) -> int:
     """Embed only stale nodes, write batches immediately, index, and verify."""
 
-    # Always load the dedicated final server/index configuration.
-    config = load_final_config()
-    # Hard-stop on any accidental trial targeting.
-    if config.graph_version != "final_v1" or config.neo4j.uri != "bolt://localhost:7688":
-        raise RuntimeError("Step 6 must target final_v1 at bolt://localhost:7688")
+    # Load only the explicitly selected frozen graph configuration.
+    config = load_graph_config(graph_version)
+    if config.graph_version != graph_version:
+        raise RuntimeError(
+            f"Requested {graph_version}, but configuration resolved to {config.graph_version}."
+        )
+    expected_counts = EXPECTED_GRAPH_COUNTS_BY_VERSION[graph_version]
 
     # Start an elapsed-time measurement before loading graph/model resources.
     started = time.perf_counter()
@@ -699,7 +731,7 @@ def execute_indexing(batch_size: int, write_batch_size: int) -> int:
         # Build current passages and compare each against stored metadata/hash.
         documents = read_embedding_documents(repository, config)
         # Fail before model inference if final graph drift or empty text is detected.
-        validate_dry_run_documents(documents, graph_counts)
+        validate_dry_run_documents(documents, graph_counts, expected_counts)
         # Keep only missing/stale documents; current vectors never reach model.encode.
         stale_documents = {
             document_type: [doc for doc in documents[document_type] if doc.needs_embedding]
@@ -793,7 +825,11 @@ def execute_indexing(batch_size: int, write_batch_size: int) -> int:
         if not failed_ids:
             create_vector_indexes(repository, config)
         # Run exhaustive aggregate vector/metadata/index validation.
-        verification, indexes, verified = verify_embeddings(repository, config)
+        verification, indexes, verified = verify_embeddings(
+            repository,
+            config,
+            expected_counts,
+        )
         # Execute one entity-index call only when all prerequisite checks passed.
         semantic_check = (
             minimal_vector_query_check(repository, config, model) if verified else None
@@ -846,7 +882,13 @@ def main() -> int:
     logging.getLogger("neo4j.notifications").setLevel(logging.ERROR)
     # Define the Step 6 command-line interface.
     parser = argparse.ArgumentParser(
-        description="Build final_v1 E5 embeddings and Neo4j vector indexes (Step 6 only)."
+        description="Build E5 embeddings and Neo4j vector indexes for a frozen final graph."
+    )
+    parser.add_argument(
+        "--graph-version",
+        choices=tuple(EXPECTED_GRAPH_COUNTS_BY_VERSION),
+        default="final_v1",
+        help="Explicit frozen graph target; final_v1 remains the compatibility default.",
     )
     # --dry-run validates without changing Neo4j.
     parser.add_argument("--dry-run", action="store_true")
@@ -874,9 +916,17 @@ def main() -> int:
         return 2
     # Execute writes only under the explicit --execute flag.
     if args.execute:
-        return execute_indexing(args.batch_size, args.write_batch_size)
+        return execute_indexing(
+            args.batch_size,
+            args.write_batch_size,
+            args.graph_version,
+        )
     # Otherwise run the zero-write validation path, optionally loading the model.
-    return dry_run(args.batch_size, not args.skip_model_load)
+    return dry_run(
+        args.batch_size,
+        not args.skip_model_load,
+        args.graph_version,
+    )
 
 
 # Standard Python entry-point guard prevents execution when imported by tests/tools.

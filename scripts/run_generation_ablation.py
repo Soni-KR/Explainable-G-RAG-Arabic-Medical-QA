@@ -28,7 +28,7 @@ from scripts.evaluation_common import (
     write_json,
     write_jsonl,
 )
-from src.config import AppConfig, load_final_config
+from src.config import AppConfig, load_final_config, load_final_v2_config
 from src.evaluation_metrics import bertscore_f1, claim_grounding_metrics, efficiency_metrics
 from src.models import (
     AnswerClaim,
@@ -1177,7 +1177,12 @@ def run_resumable_frozen_generation(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run independent answer-generation ablations on final_v1.")
+    parser = argparse.ArgumentParser(description="Run answer-generation ablations on a frozen final graph.")
+    parser.add_argument(
+        "--graph-version",
+        choices=("final_v1", "final_v2"),
+        default="final_v1",
+    )
     parser.add_argument("--gold-file", type=Path, default=DEFAULT_GOLD_FILE)
     parser.add_argument("--mode", action="append", choices=MODES, default=[])
     parser.add_argument("--limit", type=int, default=0)
@@ -1264,7 +1269,11 @@ def main() -> int:
     modes = args.mode or list(MODES)
     gold_path = args.gold_file.resolve()
     gold_queries = load_gold_queries(gold_path, args.limit)
-    config = load_final_config()
+    config = (
+        load_final_v2_config()
+        if args.graph_version == "final_v2"
+        else load_final_config()
+    )
     if args.answer_prompt_version:
         config = replace(
             config,
@@ -1306,8 +1315,10 @@ def main() -> int:
             ),
         ),
     )
-    if config.graph_version != "final_v1":
-        raise RuntimeError("Generation evaluation is restricted to frozen final_v1.")
+    if config.graph_version != args.graph_version:
+        raise RuntimeError(
+            f"Requested {args.graph_version}, but configuration resolved to {config.graph_version}."
+        )
     if args.dry_run:
         print(
             json.dumps(

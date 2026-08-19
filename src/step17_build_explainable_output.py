@@ -11,7 +11,7 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from src.config import AppConfig, load_final_config
+from src.config import AppConfig, load_final_config, load_final_v2_config
 from src.evaluation_metrics import (
     bertscore_f1,
     claim_grounding_metrics,
@@ -277,6 +277,12 @@ def build_context_only(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the final Arabic medical Graph-RAG pipeline through Step 17.")
     parser.add_argument("--query", required=True, help="Arabic medical query.")
+    parser.add_argument(
+        "--graph-version",
+        choices=("final_v1", "final_v2"),
+        default="final_v2",
+        help="Frozen graph snapshot to query; final_v2 is the published default.",
+    )
     parser.add_argument("--context-only", action="store_true", help="Stop after Step 11 without answer generation.")
     parser.add_argument(
         "--relevant-context-id",
@@ -293,6 +299,11 @@ def main() -> int:
     )
     parser.add_argument("--reference-answer", default="", help="Gold answer used only for optional BERTScore/RAGAS.")
     args = parser.parse_args()
+    config = (
+        load_final_v2_config()
+        if args.graph_version == "final_v2"
+        else load_final_config()
+    )
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     try:
@@ -303,11 +314,12 @@ def main() -> int:
                 raise ValueError("Each --relevance-grade must use ID=GRADE.")
             grades[item_id.strip()] = float(value)
         payload = (
-            context_only_payload(build_context_only(args.query))
+            context_only_payload(build_context_only(args.query, config=config))
             if args.context_only
             else asdict(
                 run_explainable_pipeline(
                     args.query,
+                    config=config,
                     relevant_context_ids=set(args.relevant_context_id),
                     relevance_grades=grades,
                     reference_answer=args.reference_answer,

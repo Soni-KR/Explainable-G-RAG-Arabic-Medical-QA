@@ -1,32 +1,56 @@
+# Secrets and local configuration
 .env
 .env.*
 !.env.example
+
+# Python environments and caches
 .venv/
+.venv-*/
 .venv-local/
 __pycache__/
-*.pyc
-.ipynb_checkpoints/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Local/raw datasets. Keep download instructions instead of committing large/raw data.
-AHD.csv
-AHD_english.csv
-Distribution of Question and Answer per category.csv
-data/*
-!data/evaluation/
-!data/evaluation/**
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
 
-# Temporary request files are deleted after successful processing.
-outputs/**/**/*requests*.jsonl
+# Raw/local corpora and generated search indexes
+data/raw/
+data/retrieval/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 
-# Local tool folders
-.agents/
-.sixth/
-.git_empty_backup/
-archive/_obsolete_pending_deletion/
-.codex/
-docs/*
-!docs/EVIDENCE_ADAPTIVE_GENERATION_V4.md
-neo4j_dump/
+# Generated and frozen research artifacts are distributed separately.
+outputs/
+paper/
+**/progress.json
+**/__pycache__/
+
+# Local workspaces, archives, and build products
+archive/
 aziza-trial/
-# Exploration notebooks
+neo4j_dump/
+neo4j_graph_transfer_final_v2/
+report/
+output/
+tmp/
+.tmp*/
+.agents/
+.codex/
+.git_empty_backup/
+_publish_staging/
+_local_unpublished/
+
+# Notebook scratch files. The reviewed entity-evaluation notebook is retained.
 *.ipynb
+!data/evaluation/entity_extraction/entity_evaluation_first_100.ipynb
+.ipynb_checkpoints/

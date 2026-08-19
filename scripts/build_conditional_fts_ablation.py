@@ -27,7 +27,7 @@ if __package__ in {None, ""}:
 from scripts.evaluation_common import load_gold_queries, macro_average, write_json, write_jsonl
 from scripts.run_generation_ablation import frozen_subgraph
 from scripts.run_retrieval_ablation import query_metrics, rankings
-from src.config import load_final_config
+from src.config import load_final_config, load_final_v2_config
 from src.evaluation_metrics import efficiency_metrics
 from src.step08a_normalize_query import normalize_query
 from src.step09a_qa_corpus import lexical_candidates, lexical_relevance
@@ -461,6 +461,11 @@ def main() -> int:
             "retrieval ablations."
         )
     )
+    parser.add_argument(
+        "--graph-version",
+        choices=("final_v1", "final_v2"),
+        default="final_v1",
+    )
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--gold-file", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -474,9 +479,15 @@ def main() -> int:
             "Output directory already exists; frozen ablations are never overwritten."
         )
 
-    config = load_final_config()
-    if config.graph_version != "final_v1":
-        raise RuntimeError("Conditional FTS evaluation is restricted to final_v1.")
+    config = (
+        load_final_v2_config()
+        if args.graph_version == "final_v2"
+        else load_final_config()
+    )
+    if config.graph_version != args.graph_version:
+        raise RuntimeError(
+            f"Requested {args.graph_version}, but configuration resolved to {config.graph_version}."
+        )
     if not config.qa_corpus.enabled:
         raise RuntimeError("The held-out-safe QA corpus is disabled.")
     index_path = Path(config.qa_corpus.index_path)

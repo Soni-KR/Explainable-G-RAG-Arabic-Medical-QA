@@ -360,3 +360,36 @@ def load_final_config() -> AppConfig:
         answer_generation=base.answer_generation,
         claim_adjudication=base.claim_adjudication,
     )
+
+
+def load_final_v2_config() -> AppConfig:
+    """Load the isolated final_v2 graph without changing final_v1 settings."""
+    _load_dotenv()
+    base = load_final_config()
+    return AppConfig(
+        graph_version=_env("FINAL_V2_GRAPH_VERSION", "final_v2"),
+        neo4j=Neo4jConfig(
+            uri=_env("FINAL_V2_NEO4J_URI", "bolt://localhost:7689"),
+            username=_env("FINAL_V2_NEO4J_USERNAME", base.neo4j.username),
+            password=_env("FINAL_V2_NEO4J_PASSWORD", base.neo4j.password),
+            database=_env("FINAL_V2_NEO4J_DATABASE", "neo4j"),
+        ),
+        embeddings=EmbeddingConfig(
+            model_name=_env("FINAL_V2_EMBEDDING_MODEL", base.embeddings.model_name),
+            dimension=_env_int("FINAL_V2_EMBEDDING_DIMENSION", base.embeddings.dimension),
+            entity_vector_index_name=_env(
+                "FINAL_V2_ENTITY_VECTOR_INDEX", "final_v2_medical_entity_vector_index"
+            ),
+            evidence_vector_index_name=_env(
+                "FINAL_V2_EVIDENCE_VECTOR_INDEX", "final_v2_evidence_mention_vector_index"
+            ),
+            qa_vector_index_name=_env(
+                "FINAL_V2_QA_VECTOR_INDEX", "final_v2_qa_record_vector_index"
+            ),
+        ),
+        qa_corpus=base.qa_corpus,
+        retrieval=base.retrieval,
+        query_analysis=base.query_analysis,
+        answer_generation=base.answer_generation,
+        claim_adjudication=base.claim_adjudication,
+    )

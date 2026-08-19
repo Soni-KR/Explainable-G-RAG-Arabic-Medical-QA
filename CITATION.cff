@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the MG-Retriever manuscript."
+title: "MG-Retriever: Arabic Medical Graph-RAG"
+type: software
+version: final-v2
+date-released: 2026-08-06
+authors:
+  - family-names: CHAIEB
+    given-names: Marouene
+  - family-names: SMINE
+    given-names: Bouthaina
+  - family-names: BELLANES
+    given-names: Aziza
+  - family-names: KRAIEM
+    given-names: Mourad
+  - family-names: KAMEL
+    given-names: Imen
+preferred-citation:
+  type: article
+  title: "MG-Retriever: An Explainable and Reliability-Oriented Graph-RAG Framework for Arabic Medical Question Answering"
+  year: 2026
+  authors:
+    - family-names: CHAIEB
+      given-names: Marouene
+    - family-names: SMINE
+      given-names: Bouthaina
+    - family-names: BELLANES
+      given-names: Aziza
+    - family-names: KRAIEM
+      given-names: Mourad
+    - family-names: KAMEL
+      given-names: Imen

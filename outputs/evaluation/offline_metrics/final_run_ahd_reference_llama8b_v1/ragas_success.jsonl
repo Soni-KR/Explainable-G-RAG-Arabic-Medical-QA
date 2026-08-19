@@ -1,1 +1,0 @@
-{"status": "ok", "query_id": "evalv1_001", "metric": "context_recall", "value": 0.727273, "reason": "", "evaluation_method": "ragas_0_4_3", "model": "llama-3.1-8b-instant", "attempts": 1, "context_count": 6, "latency_ms": 1818.716, "scopes": ["all_100", "generated_66", "substantive_26"]}

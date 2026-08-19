@@ -23,7 +23,7 @@ from scripts.evaluation_common import (
     write_json,
     write_jsonl,
 )
-from src.config import AppConfig, load_final_config
+from src.config import AppConfig, load_final_config, load_final_v2_config
 from src.evaluation_metrics import efficiency_metrics, retrieval_metrics
 from src.models import (
     ExtractedMedicalPhrase,
@@ -66,6 +66,16 @@ DEFAULT_MODES = (
     "full_hybrid",
 )
 MODES = (*DEFAULT_MODES, "full_hybrid_cross_encoder_rescue")
+
+
+def load_evaluation_graph_config(graph_version: str) -> AppConfig:
+    """Select one frozen graph explicitly while preserving final_v1 defaults."""
+
+    if graph_version == "final_v1":
+        return load_final_config()
+    if graph_version == "final_v2":
+        return load_final_v2_config()
+    raise ValueError(f"Unsupported graph version: {graph_version}")
 
 
 def stable_unique(values: list[str]) -> list[str]:
@@ -468,7 +478,12 @@ def aggregate_mode(records: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run independent retrieval ablations on final_v1.")
+    parser = argparse.ArgumentParser(description="Run independent retrieval ablations on a frozen final graph.")
+    parser.add_argument(
+        "--graph-version",
+        choices=("final_v1", "final_v2"),
+        default="final_v1",
+    )
     parser.add_argument("--gold-file", type=Path, default=DEFAULT_GOLD_FILE)
     parser.add_argument("--mode", action="append", choices=MODES, default=[])
     parser.add_argument("--limit", type=int, default=0)
@@ -500,7 +515,7 @@ def main() -> int:
     modes = args.mode or list(DEFAULT_MODES)
     gold_path = args.gold_file.resolve()
     gold_queries = load_gold_queries(gold_path, args.limit)
-    config = load_final_config()
+    config = load_evaluation_graph_config(args.graph_version)
     rescue_mode_enabled = "full_hybrid_cross_encoder_rescue" in modes
     if rescue_mode_enabled:
         config = replace(
@@ -512,8 +527,10 @@ def main() -> int:
                 semantic_fallback_enabled=False,
             ),
         )
-    if config.graph_version != "final_v1":
-        raise RuntimeError("Retrieval evaluation is restricted to frozen final_v1.")
+    if config.graph_version != args.graph_version:
+        raise RuntimeError(
+            f"Requested {args.graph_version}, but configuration resolved to {config.graph_version}."
+        )
     if args.dry_run:
         print(json.dumps({"status": "dry_run", "queries": len(gold_queries), "modes": modes}, indent=2))
         return 0

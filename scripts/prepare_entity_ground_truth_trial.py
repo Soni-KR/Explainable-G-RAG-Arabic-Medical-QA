@@ -29,7 +29,13 @@ if str(ROOT) not in sys.path:
 from src.step08a_normalize_query import normalize_query
 
 
-DEFAULT_SOURCE = ROOT / "ground_truth_entities_100.csv"
+DEFAULT_SOURCE = (
+    ROOT
+    / "data"
+    / "evaluation"
+    / "entity_extraction"
+    / "ground_truth_entities_100.csv"
+)
 DEFAULT_ENTITIES = ROOT / "outputs" / "final_graph" / "entities.csv"
 DEFAULT_OUTPUT = ROOT / "data" / "evaluation" / "entity_ground_truth_trial_100.csv"
 DEFAULT_AUDIT = (

@@ -2,7 +2,7 @@
   "cohort": "entity_ground_truth_trial_100",
   "created_at_utc": "2026-07-26T12:15:09.703416+00:00",
   "selection": "first 100 unique questions in source order",
-  "source": "ground_truth_entities_100.csv",
+  "source": "data/evaluation/entity_extraction/ground_truth_entities_100.csv",
   "source_sha256": "187993cb1c58dc5a86ba4820c6316f3c2922532dbbee6a5628009125e51c32c8",
   "frozen_entities": "outputs\\final_graph\\entities.csv",
   "frozen_entities_sha256": "9205fd9c249a3ba1adcc2346f519fca057ccb6f55188e9bc9dabec1f36715646",
