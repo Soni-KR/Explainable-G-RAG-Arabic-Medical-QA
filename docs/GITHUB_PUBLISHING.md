@@ -3,7 +3,7 @@
 ## Included
 
 - Production and evaluation source under `src/`, `scripts/`, and `tests/`.
-- Entity extraction ground truth and the reviewed claim-rejection audit.
+- Annotation protocols and public documentation.
 - `.env.example`, Docker configuration, requirements, citation metadata, and docs.
 
 ## Excluded
@@ -11,6 +11,7 @@
 - `.env` and API/database credentials.
 - Virtual environments and Python caches.
 - Raw AHD and the generated 1.7 GB SQLite index.
+- Populated evaluation cohorts, reference answers, evidence passages, and labels.
 - Generated outputs, graph CSVs, database dumps, and embedding indexes.
 - Final-v2 retrieval/generation JSONL files and manuscript files.
 - API caches, request queues, and run logs.
@@ -23,7 +24,7 @@ Upload these files separately instead of committing them to Git:
 
 - `final_v2_graph_csv.zip`
 - `final_v2_neo4j_dump.zip` and its SHA-256 file
-- `final_v2_evaluation_outputs.zip`
+- `final_v2_evaluation_outputs.zip` for authorized collaborators only
 - `MG_Retriever_final_v2.pdf`
 - `MG_Retriever_final_v2_source.zip`
 

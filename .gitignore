@@ -25,6 +25,11 @@ Thumbs.db
 # Raw/local corpora and generated search indexes
 data/raw/
 data/retrieval/
+# Populated evaluation cohorts contain AHD-derived questions, answers, and evidence.
+data/evaluation/**/*.csv
+data/evaluation/**/*.json
+data/evaluation/**/*.jsonl
+data/evaluation/**/*.ipynb
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

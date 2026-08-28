@@ -11,7 +11,7 @@ distributed separately.
 | `final_v2_graph_csv.zip` | Importable final-v2 graph tables and manifest | `outputs/final_graph_v2/` |
 | `final_v2_neo4j_dump.zip` | Portable Neo4j database backup | Local restore workspace |
 | `final_v2_neo4j_dump.zip.sha256` | Dump integrity checksum | Beside the dump ZIP |
-| `final_v2_evaluation_outputs.zip` | Frozen retrieval, generation, claim-audit, and metric outputs | `outputs/evaluation/` |
+| `final_v2_evaluation_outputs.zip` | Frozen retrieval, generation, claim-audit, and metric outputs for authorized collaborators | `outputs/evaluation/` |
 | `MG_Retriever_final_v2.pdf` | Reviewed manuscript | Any local document directory |
 | `MG_Retriever_final_v2_source.zip` | Compilable LaTeX manuscript source | Any local build directory |
 
@@ -35,5 +35,6 @@ New-Item -ItemType Directory -Force outputs\evaluation | Out-Null
 Expand-Archive final_v2_evaluation_outputs.zip outputs\evaluation
 ```
 
-The compact annotation files under `data/evaluation/` remain in Git and are the
-authoritative labeling inputs. Missing labels must never be converted to zero.
+Populated annotations are not committed because they contain AHD-derived questions,
+answers, or evidence. Obtain them through the authorized project channel. Missing
+labels must never be converted to zero.

@@ -87,10 +87,9 @@ cohort; direct QA/evidence retrieval carried most answer coverage. Relation
 triplet metrics remain unavailable because no independent relation ground truth
 was completed.
 
-See `docs/EVALUATION.md` and
-`data/evaluation/final_v2_candidate_relevance_labels_100_annotated.csv`. The full
-retrieval, generation, claim-audit, and consolidated result files are available in
-the separate `final_v2_evaluation_outputs.zip` release asset.
+See `docs/EVALUATION.md`. Filled AHD-derived cohorts and relevance labels are not
+committed; the full retrieval, generation, claim-audit, and consolidated result
+files are available separately to authorized collaborators.
 
 ## Repository Layout
 
@@ -98,7 +97,7 @@ the separate `final_v2_evaluation_outputs.zip` release asset.
 src/                     Production graph, retrieval, generation, and verification code
 scripts/                 Graph construction and reproducible evaluation entry points
 tests/                   Deterministic regression and safety tests
-data/evaluation/         Frozen questions, annotations, and entity ground truth
+data/evaluation/         Annotation protocol only; populated cohorts are ignored
 data/raw/                Local AHD source; ignored by Git
 data/retrieval/          Generated SQLite FTS index; ignored by Git
 docs/                    Architecture and evaluation documentation
@@ -178,14 +177,14 @@ API.
 
 ## Reproduce the Final Evaluation
 
-Download `final_v2_evaluation_outputs.zip` and extract it to
-`outputs/evaluation/`. The frozen JSONL files then allow the reported metrics to be
-recomputed without repeating paid API calls:
+After obtaining the authorized evaluation inputs and frozen output bundle, extract
+the outputs to `outputs/evaluation/`. The frozen JSONL files then allow reported
+metrics to be recomputed without repeating paid API calls:
 
 ```powershell
 python scripts\evaluate_final_v2_relevance.py `
-  --labels data\evaluation\final_v2_candidate_relevance_labels_100_annotated.csv `
-  --queue data\evaluation\final_v2_candidate_relevance_labels_100.csv `
+  --labels path\to\final_v2_candidate_relevance_labels_100_annotated.csv `
+  --queue path\to\final_v2_candidate_relevance_labels_100.csv `
   --retrieval outputs\evaluation\retrieval\final_v2_ahd_reference_100_conditional_fts_20260803\vector_graph_conditional_fts.jsonl `
   --generation outputs\evaluation\generation\final_v2_ahd_reference_100_steps12_17_20260803\full_pipeline.jsonl `
   --generation-metrics outputs\evaluation\generation\final_v2_ahd_reference_100_steps12_17_20260803\metrics.json `
@@ -210,6 +209,8 @@ They are not part of the code repository.
 ## Data and Ethics
 
 - Do not publish raw AHD data unless its license explicitly permits redistribution.
+- Do not publish filled evaluation cohorts containing AHD questions, answers, or
+  evidence unless redistribution has been approved.
 - Evaluation questions and model outputs may contain sensitive medical language;
   use them only for research and avoid adding personal identifiers.
 - API credentials are loaded from `.env` and are never stored in manifests.

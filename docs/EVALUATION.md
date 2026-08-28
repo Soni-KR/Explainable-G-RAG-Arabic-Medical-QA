@@ -61,8 +61,8 @@ scores over all 100 questions.
 
 ## Authoritative Files
 
-- Judgments: `data/evaluation/final_v2_candidate_relevance_labels_100_annotated.csv`
-- Frozen outputs: `final_v2_evaluation_outputs.zip` in the project release.
+- Judgments: retained privately as an AHD-derived evaluation input.
+- Frozen outputs: retained separately from the public code repository.
 - After extraction, retrieval, generation, claim-audit, and consolidated metrics
   retain their original paths under `outputs/evaluation/`.
 

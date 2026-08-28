@@ -1,20 +1,11 @@
 # Evaluation Data
 
-Retained files are limited to the final-v2 evaluation and this repository's entity
-extraction/claim-verification audits.
+Only `ANNOTATION_GUIDE.md` is public. It defines the retrieval and claim-labeling
+protocol without publishing dataset-derived content.
 
-- `retrieval_gold_annotations_100.csv`: frozen 100-question cohort and AHD reference
-  answers used for offline answer comparison.
-- `final_v2_candidate_relevance_labels_100.csv`: blinded candidate queue before
-  annotation.
-- `final_v2_candidate_relevance_labels_100_annotated.csv`: completed model-adjudicated
-  candidate relevance judgments.
-- `entity_ground_truth_trial_100.*`: graph-linked entity-ground-truth trial inputs.
-- `entity_extraction/`: original entity GT, aligned predictions, and evaluation
-  notebook.
-- `claim_verification/`: manually reviewed 81-claim false-rejection audit.
-- `human_claim_annotations_100.csv`: claim annotation schema/cohort retained for
-  audit continuity.
-- `ANNOTATION_GUIDE.md`: relevance and claim-label definitions.
+The evaluation scripts expect locally supplied cohorts, relevance judgments,
+reference answers, and claim audits. These files are ignored by Git because they
+contain AHD questions, answers, evidence, or model outputs. Obtain them through the
+authorized project channel and restore them under `data/evaluation/` when needed.
 
 Missing labels must remain missing. They must never be converted to label 0.
