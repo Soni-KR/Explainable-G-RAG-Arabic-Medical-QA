@@ -1,4 +1,4 @@
-"""Read and validate the frozen final_v2 CSV contract for Neo4j import."""
+"""Read and validate the production graph CSV contract for Neo4j import."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from src.config import ROOT_DIR
-from src.step05a_final_graph_adapter import (
+from src.config import ROOT_DIR, load_production_config
+from src.step05_graph_adapter import (
     FinalGraphRecords,
     ValidationResult,
     adapt_entities,
@@ -23,12 +23,12 @@ from src.step05a_final_graph_adapter import (
 )
 
 
-FINAL_V2_DIR = ROOT_DIR / "outputs" / "final_graph_v2"
-ENTITY_SOURCE = FINAL_V2_DIR / "entities.csv"
-MENTION_SOURCE = FINAL_V2_DIR / "entity_mentions.csv"
-QA_SOURCE = FINAL_V2_DIR / "qa_records.csv"
-RELATION_SOURCE = FINAL_V2_DIR / "relations_bidirectional.csv"
-MANIFEST_SOURCE = FINAL_V2_DIR / "graph_manifest.json"
+GRAPH_DIR = ROOT_DIR / "outputs" / "production_graph"
+ENTITY_SOURCE = GRAPH_DIR / "entities.csv"
+MENTION_SOURCE = GRAPH_DIR / "entity_mentions.csv"
+QA_SOURCE = GRAPH_DIR / "qa_records.csv"
+RELATION_SOURCE = GRAPH_DIR / "relations_bidirectional.csv"
+MANIFEST_SOURCE = GRAPH_DIR / "graph_manifest.json"
 
 
 def adapt_qa_records(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
@@ -45,12 +45,13 @@ def adapt_qa_records(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
     ]
 
 
-def load_final_v2_records() -> tuple[FinalGraphRecords, ValidationResult]:
+def load_graph_snapshot() -> tuple[FinalGraphRecords, ValidationResult]:
     if not MANIFEST_SOURCE.exists():
         raise FileNotFoundError(MANIFEST_SOURCE)
     manifest = json.loads(MANIFEST_SOURCE.read_text(encoding="utf-8"))
-    if manifest.get("graph_version") != "final_v2":
-        raise ValueError("The graph manifest is not final_v2.")
+    graph_version = load_production_config().graph_version
+    if manifest.get("graph_version") != graph_version:
+        raise ValueError(f"The graph manifest is not {graph_version}.")
 
     records = FinalGraphRecords(
         entities=adapt_entities(read_csv(ENTITY_SOURCE)),
@@ -75,8 +76,8 @@ def load_final_v2_records() -> tuple[FinalGraphRecords, ValidationResult]:
 
 
 def main() -> int:
-    records, validation = load_final_v2_records()
-    print("Final v2 graph adapter validation")
+    records, validation = load_graph_snapshot()
+    print("Production graph adapter validation")
     print(f"entities: {len(records.entities)}")
     print(f"mentions: {len(records.mentions)}")
     print(f"qa_records: {len(records.qa_records)}")

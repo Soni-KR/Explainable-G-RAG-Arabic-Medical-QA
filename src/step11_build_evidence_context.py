@@ -15,7 +15,7 @@ from src.query_relevance import (
     minimum_candidate_concept_coverage,
     query_concept_coverage,
 )
-from src.step08a_normalize_query import normalize_query
+from src.step08_normalize_query import normalize_query
 from src.step09_hybrid_retrieval import lexical_overlap
 
 

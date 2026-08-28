@@ -16,8 +16,8 @@ if __package__ in {None, ""}:
 from src.config import AppConfig, load_config
 from src.models import ExtractedMedicalPhrase, QueryEntityLinkingResult, UnifiedQueryAnalysisResult
 from src.neo4j_repository import Neo4jRepository
-from src.step08a_normalize_query import normalize_query
-from src.step08c_link_entities import GENERIC_PHRASES, link_extracted_phrases
+from src.step08_normalize_query import normalize_query
+from src.step08_link_entities import GENERIC_PHRASES, link_extracted_phrases
 
 
 PROMPT_VERSION = "query_analysis_v1"

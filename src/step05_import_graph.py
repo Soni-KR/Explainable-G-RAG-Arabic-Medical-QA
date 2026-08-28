@@ -1,4 +1,4 @@
-"""Dry-run or explicitly import final_v2 into its isolated Neo4j service."""
+"""Dry-run or explicitly import the production graph into Neo4j."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ from pathlib import Path
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from src.config import load_final_v2_config
+from src.config import load_production_config
 from src.neo4j_repository import Neo4jRepository
-from src.step05b_graph_import_utils import (
+from src.step05_import_utils import (
     DEFAULT_BATCH_SIZE,
     compare_counts,
     constraint_cypher_templates,
@@ -27,13 +27,13 @@ from src.step05b_graph_import_utils import (
     relationship_rows,
     validation_queries,
 )
-from src.step05d_final_v2_adapter import load_final_v2_records
+from src.step05_graph_snapshot import load_graph_snapshot
 
 
 def dry_run(batch_size: int) -> int:
-    config = load_final_v2_config()
-    records, validation = load_final_v2_records()
-    print("Final v2 Neo4j importer dry-run")
+    config = load_production_config()
+    records, validation = load_graph_snapshot()
+    print("Production Neo4j importer dry-run")
     print(f"uri: {config.neo4j.uri}")
     print(f"database: {config.neo4j.database}")
     print(f"graph_version: {config.graph_version}")
@@ -48,11 +48,8 @@ def dry_run(batch_size: int) -> int:
 
 
 def execute_import(batch_size: int) -> int:
-    config = load_final_v2_config()
-    if config.graph_version != "final_v2":
-        print(f"status: stopped_unexpected_graph_version_{config.graph_version}")
-        return 1
-    records, validation = load_final_v2_records()
+    config = load_production_config()
+    records, validation = load_graph_snapshot()
     if validation.errors:
         print(f"adapter_validation: failed ({len(validation.errors)} errors)")
         return 1

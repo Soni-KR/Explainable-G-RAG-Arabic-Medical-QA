@@ -19,7 +19,7 @@ from typing import Any, Iterable
 
 from src.config import AppConfig
 from src.models import VectorSearchResult
-from src.step08a_normalize_query import normalize_query
+from src.step08_normalize_query import normalize_query
 
 
 TOKEN_RE = re.compile(r"[\w\u0600-\u06ff]+", re.UNICODE)

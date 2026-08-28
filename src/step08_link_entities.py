@@ -13,7 +13,7 @@ if __package__ in {None, ""}:
 
 from src.models import ExtractedMedicalPhrase, LinkedMedicalEntity, QueryEntityLinkingResult
 from src.neo4j_repository import Neo4jRepository
-from src.step08a_normalize_query import normalize_query
+from src.step08_normalize_query import normalize_query
 
 
 MATCH_SCORES = {
@@ -239,7 +239,7 @@ def link_extracted_phrases(
 
 def link_query_entities(query: str, repository: Neo4jRepository | None = None) -> QueryEntityLinkingResult:
     # Normal pipeline path: one unified LLM analysis call, then deterministic Neo4j linking.
-    from src.step08b_analyze_query import analyze_query
+    from src.step08_analyze_query import analyze_query
 
     analysis = analyze_query(query)
     if repository is None:

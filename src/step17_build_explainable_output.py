@@ -11,7 +11,7 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from src.config import AppConfig, load_final_config, load_final_v2_config
+from src.config import AppConfig, load_final_config, load_production_config
 from src.evaluation_metrics import (
     bertscore_f1,
     claim_grounding_metrics,
@@ -20,8 +20,8 @@ from src.evaluation_metrics import (
 )
 from src.models import EvidenceContextBundle, ExplainableMedicalAnswer
 from src.neo4j_repository import Neo4jRepository
-from src.step08b_analyze_query import analyze_and_link_query
-from src.step08d_plan_retrieval import build_retrieval_plan
+from src.step08_analyze_query import analyze_and_link_query
+from src.step08_plan_retrieval import build_retrieval_plan
 from src.step09_hybrid_retrieval import (
     add_semantic_qa_fallback,
     retrieve_hybrid,
@@ -300,7 +300,7 @@ def main() -> int:
     parser.add_argument("--reference-answer", default="", help="Gold answer used only for optional BERTScore/RAGAS.")
     args = parser.parse_args()
     config = (
-        load_final_v2_config()
+        load_production_config()
         if args.graph_version == "final_v2"
         else load_final_config()
     )

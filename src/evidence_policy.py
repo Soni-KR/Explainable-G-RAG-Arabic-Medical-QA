@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from src.step08a_normalize_query import normalize_query
+from src.step08_normalize_query import normalize_query
 
 
 SOURCE_RELIABILITY_PRIORS: dict[str, float] = {

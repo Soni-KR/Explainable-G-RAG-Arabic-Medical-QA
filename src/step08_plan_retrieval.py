@@ -11,9 +11,9 @@ if __package__ in {None, ""}:
 
 from src.config import AppConfig, load_config
 from src.models import QueryEntityLinkingResult, RetrievalPlanResult, UnifiedQueryAnalysisResult
-from src.step08a_normalize_query import normalize_query
-from src.step08b_analyze_query import UNSUPPORTED_GRAPH_INTENTS, analyze_and_link_query
-from src.step08c_link_entities import GENERIC_PHRASES
+from src.step08_normalize_query import normalize_query
+from src.step08_analyze_query import UNSUPPORTED_GRAPH_INTENTS, analyze_and_link_query
+from src.step08_link_entities import GENERIC_PHRASES
 
 
 def _strip_article(value: str) -> str:

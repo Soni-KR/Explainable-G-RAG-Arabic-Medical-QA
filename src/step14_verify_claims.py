@@ -9,7 +9,7 @@ from src.query_relevance import (
     query_concept_coverage,
     query_concepts,
 )
-from src.step08a_normalize_query import normalize_query
+from src.step08_normalize_query import normalize_query
 from src.step09_hybrid_retrieval import anatomy_terms
 
 

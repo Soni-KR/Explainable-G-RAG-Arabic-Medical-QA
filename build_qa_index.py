@@ -8,8 +8,10 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from src.config import ROOT_DIR, load_final_v2_config
-from src.step09a_qa_corpus import build_qa_corpus_index, load_holdout_questions
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from src.config import ROOT_DIR, load_production_config
+from src.step09_qa_corpus import build_qa_corpus_index, load_holdout_questions
 
 
 DEFAULT_SOURCE = ROOT_DIR / "data" / "raw" / "AHD.csv"
@@ -29,7 +31,7 @@ def main() -> int:
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 
-    config = load_final_v2_config()
+    config = load_production_config()
     index_path = Path(config.qa_corpus.index_path)
     holdout_count = len(load_holdout_questions(args.split_source))
     if not args.execute:

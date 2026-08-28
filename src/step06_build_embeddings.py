@@ -48,7 +48,7 @@ if __package__ in {None, ""}:
 # The repository root is one directory above this ``src`` file.
 ROOT = Path(__file__).resolve().parents[1]
 # AppConfig supplies final Neo4j, model, dimension, and index-name settings.
-from src.config import AppConfig, load_final_config, load_final_v2_config
+from src.config import AppConfig, load_final_config, load_production_config
 # Neo4jRepository owns the authenticated driver and read transaction helper.
 from src.neo4j_repository import Neo4jRepository
 
@@ -84,7 +84,7 @@ def load_graph_config(graph_version: str) -> AppConfig:
     if graph_version == "final_v1":
         return load_final_config()
     if graph_version == "final_v2":
-        return load_final_v2_config()
+        return load_production_config()
     raise ValueError(f"Unsupported graph version: {graph_version}")
 
 

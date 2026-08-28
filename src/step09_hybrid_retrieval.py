@@ -18,9 +18,9 @@ from src.models import (
     VectorSearchResult,
 )
 from src.neo4j_repository import Neo4jRepository
-from src.step06_build_embedding_indexes import load_model
-from src.step08a_normalize_query import normalize_query
-from src.step09a_qa_corpus import search_qa_corpus
+from src.step06_build_embeddings import load_model
+from src.step08_normalize_query import normalize_query
+from src.step09_qa_corpus import search_qa_corpus
 
 
 TOKEN_RE = re.compile(r"[\w\u0600-\u06ff]+", re.UNICODE)
