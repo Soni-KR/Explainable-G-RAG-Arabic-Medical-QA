@@ -8,27 +8,28 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-if __package__ in {None, ""}:
-    sys.path.append(str(Path(__file__).resolve().parents[1]))
-
-from src.config import ROOT_DIR, load_final_config
+from src.config import ROOT_DIR, load_final_v2_config
 from src.step09a_qa_corpus import build_qa_corpus_index, load_holdout_questions
 
 
 DEFAULT_SOURCE = ROOT_DIR / "data" / "raw" / "AHD.csv"
-DEFAULT_SPLITS = ROOT_DIR / "outputs" / "final_graph" / "provenance" / "qa_records_source_5000.csv"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build the held-out-safe AHD QA retrieval index.")
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
-    parser.add_argument("--split-source", type=Path, default=DEFAULT_SPLITS)
+    parser.add_argument(
+        "--split-source",
+        type=Path,
+        required=True,
+        help="CSV containing the evaluation questions that must be excluded.",
+    )
     parser.add_argument("--batch-size", type=int, default=2000)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 
-    config = load_final_config()
+    config = load_final_v2_config()
     index_path = Path(config.qa_corpus.index_path)
     holdout_count = len(load_holdout_questions(args.split_source))
     if not args.execute:

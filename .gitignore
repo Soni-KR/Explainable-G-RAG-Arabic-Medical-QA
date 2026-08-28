@@ -55,7 +55,6 @@ tmp/
 _publish_staging/
 _local_unpublished/
 
-# Notebook scratch files. The reviewed entity-evaluation notebook is retained.
+# Notebook scratch files
 *.ipynb
-!data/evaluation/entity_extraction/entity_evaluation_first_100.ipynb
 .ipynb_checkpoints/
